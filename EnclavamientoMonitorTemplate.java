@@ -2,7 +2,7 @@ package Practica1;
 
 import es.upm.babel.cclib.Monitor;
 
-//Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo
+//Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 
 public class EnclavamientoMonitorTemplate implements Enclavamiento {
 
