@@ -16,17 +16,36 @@ public class EnclavamientoMonitorTemplate implements Enclavamiento {
   
   private enum color {Rojo,Amarillo,Verde}; // Declaramos un tipo enumerado para los colores del semaforo
   
+  private color actual; // Con esta variable sabemos el color actual en cada momento
   
-  public EnclavamientoMonitorTemplate(int[] tren) {
+  public EnclavamientoMonitorTemplate() {
 	  
 	  this.presencia = false; // Inicializamos la presencia--> false
 	  
 	  this.tren = new int[0]; // Inicializamos al tren 0                // INICIAL
 	  
-	  color c = color.Verde; // Inicializamos al color verde
+	  this.actual = color.Verde; // Inicializamos al color verde
 	    
   }
   
+  // Metodo auxiliar con los colores correctos
+  private color coloresCorrectos () {
+	// Implementacion colores correctos
+	   if( tren[1] > 0 ) {
+		   actual = color.Rojo;
+	   } else if( tren[1] == 0 && ( tren[2] > 0 || presencia == true)) {
+		   actual = color.Amarillo;
+	   } else if( tren[1] == 0 && tren[2] == 0 && presencia == false) {
+		   actual = color.Verde;
+	   } else if( tren[2] > 0 || presencia == true) {
+		   actual = color.Rojo;
+	   } else if( tren[2] == 0 && presencia == false) {
+		   actual = color.Verde;
+	   } else {
+		   actual = color.Verde;
+	   }
+	return actual;
+  }
   
   @Override
   public void avisarPresencia(boolean presencia) {
@@ -34,8 +53,9 @@ public class EnclavamientoMonitorTemplate implements Enclavamiento {
     // chequeo de la PRE
     // chequeo de la CPRE y posible bloqueo
     // implementacion de la POST
-   
-    
+   this.presencia = presencia;
+   // Falta por programar la condicion--> self.tren = self.PRE.tren 
+   coloresCorrectos();
     // codigo de desbloqueo
     mutex.leave();
   }
