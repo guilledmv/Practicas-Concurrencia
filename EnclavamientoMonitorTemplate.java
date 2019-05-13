@@ -1,5 +1,3 @@
-package Practica1;
-
 import java.util.ArrayList;
 
 import java.util.HashMap;
@@ -32,7 +30,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  
 	  this.presencia = false; // Inicializamos la presencia--> false  
 	  this.coloresBaliza = new String [] {"Verde","Verde","Verde","Verde"};
-	  for ( Integer i = 0; i<trenes.size();i++) {
+	  for ( Integer i = 1; i<4;i++) {
 		  trenes.put(i,0); // Inicializamos a 0, el numero de trenes detras de la baliza
 	  }
 	  
@@ -41,22 +39,21 @@ public class EnclavamientoMonitor implements Enclavamiento {
   }
   
   // Metodo auxiliar con los colores correctos
-  private color coloresCorrectos () {
+  private void coloresCorrectos () {
 	// Implementacion colores correctos
-	   if( tren[1] > 0 ) {
-		   actual = color.Rojo;
-	   } else if( tren[1] == 0 && ( tren[2] > 0 || presencia == true)) {
-		   actual = color.Amarillo;
-	   } else if( tren[1] == 0 && tren[2] == 0 && presencia == false) {
-		   actual = color.Verde;
-	   } else if( tren[2] > 0 || presencia == true) {
-		   actual = color.Rojo;
-	   } else if( tren[2] == 0 && presencia == false) {
-		   actual = color.Verde;
+	   if( trenes.get(1)>0 ) {
+		   coloresBaliza[1]= "Rojo";
+	   } else if( trenes.get(1) == 0 && ( trenes.get(2)>0 || presencia == true)) {
+		   coloresBaliza[1] = "Amarillo";
+	   } else if( trenes.get(1) == 0 && trenes.get(2) == 0 && presencia == false) {
+		   coloresBaliza[1]= "Verde";
+	   } else if( trenes.get(2)>0 || presencia == true) {
+		   coloresBaliza[2] = "Rojo";
+	   } else if( trenes.get(2) == 0 && presencia == false) {
+		   coloresBaliza[2] = "Verde";
 	   } else {
-		   actual = color.Verde;
+		   coloresBaliza[3] = "Verde";
 	   }
-	return actual;
   }
   
   @Override
