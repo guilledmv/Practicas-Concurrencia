@@ -1,10 +1,16 @@
 package Practica1;
 
+import java.util.ArrayList;
+
+import java.util.HashMap;
+
+import java.util.Map;
+
 import es.upm.babel.cclib.Monitor;
 
 //Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 
-public class EnclavamientoMonitorTemplate implements Enclavamiento {
+public class EnclavamientoMonitor implements Enclavamiento {
 
 //Declaro variables necesarias para el programa
 
@@ -12,19 +18,25 @@ public class EnclavamientoMonitorTemplate implements Enclavamiento {
   
   private boolean presencia; // Declaramos booleano para la presencia
   
-  private int [] tren = {0,1,2,3}; // Declaramos un array de tren, para saber a que tren se refiere
-  
   private enum color {Rojo,Amarillo,Verde}; // Declaramos un tipo enumerado para los colores del semaforo
   
-  private color actual; // Con esta variable sabemos el color actual en cada momento
+  private Map<Integer,Integer> trenes = new HashMap<Integer,Integer>(); // Declaramos un mapa de trenes para controlar el paso por las balizas
   
-  public EnclavamientoMonitorTemplate() {
+  // private Map<Integer,color> colores = new HashMap<Integer,color>(); // Declaramos id para los colores, que nos indican por que semaforo pasa 
+  
+  private String [] coloresBaliza; // Declaramos array de String para los colores de los semaforos
+  
+  // private color actual; // Con esta variable sabemos el color actual en cada momento
+  
+  public EnclavamientoMonitor() {
 	  
-	  this.presencia = false; // Inicializamos la presencia--> false
+	  this.presencia = false; // Inicializamos la presencia--> false  
+	  this.coloresBaliza = new String [] {"Verde","Verde","Verde","Verde"};
+	  for ( Integer i = 0; i<trenes.size();i++) {
+		  trenes.put(i,0); // Inicializamos a 0, el numero de trenes detras de la baliza
+	  }
 	  
-	  this.tren = new int[0]; // Inicializamos al tren 0                // INICIAL
-	  
-	  this.actual = color.Verde; // Inicializamos al color verde
+	
 	    
   }
   
