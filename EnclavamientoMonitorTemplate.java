@@ -8,21 +8,14 @@ import es.upm.babel.cclib.Monitor;
 
 public class EnclavamientoMonitor implements Enclavamiento {
 
-//Declaro variables necesarias para el programa
+	//------------- VARIABLES GLOBALES -------------
 
   Monitor mutex = new Monitor();
+  private boolean presencia; 												// Declaramos booleano para la presencia
+  private enum color {Rojo,Amarillo,Verde};									// Declaramos un tipo enumerado para los colores del semaforo
+  private Map<Integer,Integer> trenes = new HashMap<Integer,Integer>(); 	// Declaramos un mapa de trenes para controlar el paso por las balizas
+  private String [] coloresBaliza; 											// Declaramos array de String para los colores de los semaforos
   
-  private boolean presencia; // Declaramos booleano para la presencia
-  
-  private enum color {Rojo,Amarillo,Verde}; // Declaramos un tipo enumerado para los colores del semaforo
-  
-  private Map<Integer,Integer> trenes = new HashMap<Integer,Integer>(); // Declaramos un mapa de trenes para controlar el paso por las balizas
-  
-  // private Map<Integer,color> colores = new HashMap<Integer,color>(); // Declaramos id para los colores, que nos indican por que semaforo pasa 
-  
-  private String [] coloresBaliza; // Declaramos array de String para los colores de los semaforos
-  
-  // private color actual; // Con esta variable sabemos el color actual en cada momento
   
   public EnclavamientoMonitor() {
 	  
@@ -86,13 +79,9 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	}
     
   //------- POST -------
-  
-    
-    
-    
-    
-    mutex.leave();
-    return false;
+  boolean esperado=(this.trenes.get(1)+this.trenes.get(2)==0);
+  mutex.leave();
+  return esperado;
   }
 
   @Override
@@ -117,9 +106,9 @@ public class EnclavamientoMonitor implements Enclavamiento {
     
   //------- POST -------
     
-    
+    boolean esperado= (this.trenes.get(1)>1 || this.trenes.get(2)>1 || this.trenes.get(2)==1 && this.presencia==true);
     mutex.leave();
-    return false;
+    return esperado;
   }
 
   @Override
@@ -132,16 +121,17 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    
 	    //------- SI NO SE CUMPLE LA PRE Y CPRE -> EXCEPCION -------
 	    
-	    if (actual.equals(this.coloresBaliza.equals(i))&& i==0) {
+	    if (i==0 && actual.toString().equals(this.coloresBaliza[i])) {
+	    	    	
 			mutex.leave();
 			throw new PreconditionFailedException();
 		}
 	    
 	  //------- POST -------
-	    
-	    
+
+	    Control.Color esperado=actual.valueOf(this.coloresBaliza[i]);
 	    mutex.leave();
-	    return null;
+	    return esperado;
 	  }
 
   @Override
@@ -160,8 +150,8 @@ public class EnclavamientoMonitor implements Enclavamiento {
 		}
 	    
 	  //------- POST -------
-	    
-	    
+	   // this.trenes.put(i-1, this.trenes.get(i-1)-1);
+	    //this.trenes.put(i, this.trenes.get(i)+1);	    
 	    mutex.leave();
 	   
 	  }
