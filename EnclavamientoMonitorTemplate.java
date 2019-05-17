@@ -1,49 +1,55 @@
-//package Practica1;
+package Practica1;
 import java.util.Arrays;
 import es.upm.babel.cclib.Monitor;
 
 //Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 
 public class EnclavamientoMonitor implements Enclavamiento {
+	
 
 	//------------- VARIABLES GLOBALES -------------
 
   Monitor mutex = new Monitor();
-  private Monitor.Cond cBarrera;
-  private Monitor.Cond cFreno;
-  private Monitor.Cond cSemaforo;
-  private Monitor.Cond cPresencia;
+  private Monitor.Cond [] condiciones = new Monitor.Cond [11]; // Declaro array de condiciones
   private boolean presencia;// Declaramos un tipo enumerado para los colores del semaforo
   private enum color {ROJO,AMARILLO,VERDE};
+  private color ROJO = color.ROJO;
+  private color AMARILLO = color.AMARILLO;
+  private color VERDE = color.VERDE;
   private int [] trenes; 	// Declaramos un array de trenes para controlar el paso por las balizas
-  private color [] coloresBaliza; // Declaramos array del enumerado Color para los colores de los semaforos
+  //private color [] coloresBaliza; // Declaramos array del enumerado Color para los colores de los semaforos
+  private int [] [] matrizSemaforo = new int [3] [3]; // Declaramos matriz para gestionar leerCambioSemaforo con las filas para el nº de semaforo
+  // y las columnas para el color del semaforo
   
   public EnclavamientoMonitor() {
-	  this.cBarrera = mutex.newCond(); // Condicion barrera
-	  this.cFreno = mutex.newCond(); // Condicion Freno
-	  this.cSemaforo = mutex.newCond(); // Condicion semaforo
-	  this.cPresencia = mutex.newCond(); // Condicion Presencia
+	  // Inicializamos todas las condiciones
+	  for ( int i = 0; i < 10 ; i++) {
+		  this.condiciones[i] = mutex.newCond();  
+	  }
 	  this.presencia = false; // Inicializamos la presencia--> false
 	  this.trenes = new int [] {0,0,0,0}; // Declaro el array de trenes inicializando a 0 el numero de trenes despues de cada baliza
-	  this.coloresBaliza = new color[] {color.VERDE,color.VERDE,color.VERDE,color.VERDE};
-	  // Inicializo a verde todos los colores de los semaforos
+	  // Inicializamos a VERDE todos los colores de los semaforos
+	  //this.coloresBaliza = new color[] {color.VERDE,color.VERDE,color.VERDE,color.VERDE};
+	  // Inicializamos a verde todos los semaforos 
+	  this.matrizSemaforo = new int [] [] {{1,2,3},{VERDE.ordinal(),VERDE.ordinal(),VERDE.ordinal()}} ;
   }
   
   // Metodo auxiliar con los colores correctos
   private void coloresCorrectos () {
 	// Implementacion colores correctos
 	   if( trenes[1]>0 ) {
-		   coloresBaliza[1] = color.ROJO;
+		   this.matrizSemaforo[1] [VERDE.ordinal()] = matrizSemaforo [1] [ROJO.ordinal()]; 
 	   } else if( trenes[1] == 0 && ( trenes[2]>0 || presencia == true)) {
-		   coloresBaliza[1] = color.AMARILLO;
+		   this.matrizSemaforo[1][VERDE.ordinal()] = matrizSemaforo [1] [AMARILLO.ordinal()];
 	   } else if( trenes[1] == 0 && trenes[2] == 0 && presencia == false) {
-		   coloresBaliza[1] = color.VERDE;
+		   this.matrizSemaforo[1][VERDE.ordinal()] = matrizSemaforo [1] [VERDE.ordinal()];
 	   } else if( trenes[2]>0 || presencia == true) {
-		   coloresBaliza[2] = color.ROJO;
+		   //coloresBaliza[2] = color.ROJO;
+		   this.matrizSemaforo[2][VERDE.ordinal()] = matrizSemaforo [2] [ROJO.ordinal()];
 	   } else if( trenes[2] == 0 && presencia == false) {
-		   coloresBaliza[2] = color.VERDE;
+		   this.matrizSemaforo[2][VERDE.ordinal()] = matrizSemaforo [2] [VERDE.ordinal()];
 	   } else {
-		   coloresBaliza[3] = color.VERDE;
+		   this.matrizSemaforo[3][VERDE.ordinal()] = matrizSemaforo [3] [VERDE.ordinal()];
 	   }
   }
   
@@ -56,71 +62,77 @@ public class EnclavamientoMonitor implements Enclavamiento {
    this.presencia = presencia;
    coloresCorrectos();
     mutex.leave();
-     }
+     
+  }
 
   public boolean leerCambioBarrera(boolean actual) {
-    mutex.enter();
-    
-    //------- SI NO SE CUMPLE LA CPRE -> EN ESPERA -------
-    if(actual == ((this.trenes[1] + this.trenes[2]) == 0)) { 
-    	cBarrera.await(); // Se queda en espera
-    }	
-    //------- POST -------  	
-    boolean esperado = ((this.trenes[1] + this.trenes[2]) == 0);
-    if(cBarrera.waiting() > 0 && esperado) { // Si existen esperando procesos
-    	cBarrera.signal(); // Ejecuta los procesos
-    	mutex.leave();
-    }
-    	return esperado;
+	  // Analizamos dos casos--> caso actual = true Y caso actual = false
+	  mutex.enter();
+	  //Declaramos variable booleana que devolveremos
+	  boolean esperado = false;
+	  /* Si actual == true --> No se cumple la CPRE --> Se queda en espera el hilo, no es el resultado esperado
+	   * por tanto esperado es falso y salta la excepcion
+	   */
+	  if(actual == true) {
+		  condiciones[0].await();
+		  esperado = false;
+		  throw new PreconditionFailedException();
+	  }
+	  
+	  /* Si actual == false --> Se cumple la CPRE --> Senaliza el hilo y esperado es verdadero
+	   */
+	  if ( actual == false && condiciones[0].waiting() > 0 ) { 
+		  condiciones[0].signal();
+		  esperado = true;
+		  mutex.leave();
+	  }
+	  return esperado;
   }
 
   @Override
   public boolean leerCambioFreno(boolean actual) {
     mutex.enter();
-    //------- SI NO SE CUMPLE LA CPRE -> EN ESPERA -------
-    if(actual == this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true) {
-    	cFreno.await(); // Se queda en espera
+    // Declaramos variable booleana que nos devuelve el resultado esperado
+    boolean esperado = false;
+    /* Si actual == true --> No se cumple la CPRE --> Se queda en espera el hilo, no es el resultado esperado
+	   * por tanto esperado es falso y salta la excepcion
+	   */
+    if ( actual == false ) { //&& actual != ((this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true ))) {
+    	condiciones[1].await();
+    	esperado = false;
+    	throw new PreconditionFailedException();
     }
-  //------- POST -------
-    
-    boolean esperado= (this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true);
-    if( cFreno.waiting() > 0 && esperado) {
-    cFreno.signal();
-    mutex.leave();
-    }
-    return esperado;
+    /* Si actual == false --> Se cumple la CPRE --> Senaliza el hilo y esperado es verdadero
+	   */
+    if ( actual == true && condiciones[1].waiting() > 0) {//&& actual != ((this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true ))) {
+    	condiciones[1].signal();
+    	esperado = true;
+    	mutex.leave(); 
+  }
+   return esperado;
   }
 
   @Override
   public Control.Color leerCambioSemaforo(int i, Control.Color actual) {
 	    mutex.enter();
-	    //------- SI NO SE CUMPLE LA PRE Y CPRE -> EN ESPERA -------
-	    if (i == 0 || i!=0 && actual.equals(this.coloresBaliza)) {
-			cSemaforo.await();
-		}
-	  //------- POST -------
-	    Control.Color esperado = actual.valueOf(this.coloresBaliza[i].name()) ;
-	    if(cSemaforo.waiting() > 0) {
-	    cSemaforo.signal();
+	    Control.Color esperado = Control.Color.VERDE;
+	    /* 1º CASO: semaforo: 1 y color actual: VERDE
+	     * 
+	     */
+	    
+	    
+	   
 	    mutex.leave();
-	    }
 	    return esperado;
 	  }
 
   @Override
   public void avisarPasoPorBaliza(int i) {
 	    mutex.enter();
-	    //------- SI NO SE CUMPLE LA PRE Y CPRE -> EN ESPERA -------
-	    if (i == 0) {
-			cPresencia.await();
-		}
-	  //------- POST -------
-	    this.trenes[i-1]-= 1 ;
-	    this.trenes[i]+= 1 ;
-	    cPresencia.signal();
-	    //this.trenes.put(i, this.trenes.get(i)+1);	    
+
 	    mutex.leave();
 	   
 	  }
+ 
  
 }
