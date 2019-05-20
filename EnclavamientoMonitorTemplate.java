@@ -52,14 +52,10 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	   }
   }
   
-  public void avisarPresencia(boolean presencia) {
-	  // Modificar este metodo con presencia = false y || presencia = true
+  public void avisarPresencia(boolean presencia) { 
     mutex.enter();
-    
-   //------- PRE == CIERTO -------
-    
-  //------- POST -------
-   this.presencia = presencia;
+    //-----POST--------
+    this.presencia = presencia;
    coloresCorrectos();
     mutex.leave();
      
