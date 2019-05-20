@@ -1,6 +1,8 @@
 package Practica1;
-import java.util.Arrays;
 import es.upm.babel.cclib.Monitor;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
 //Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 
@@ -19,6 +21,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
   //private color [] coloresBaliza; // Declaramos array del enumerado Color para los colores de los semaforos
   private int [] [] matrizSemaforo = new int [3] [3]; // Declaramos matriz para gestionar leerCambioSemaforo con las filas para el numero de semaforo
   // y las columnas para el color del semaforo
+  private LinkedList<Semaforo> lista = new LinkedList <Semaforo>();
   
   public EnclavamientoMonitor() {
 	  // Inicializamos todas las condiciones
@@ -30,7 +33,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  // Inicializamos a VERDE todos los colores de los semaforos
 	  //this.coloresBaliza = new color[] {color.VERDE,color.VERDE,color.VERDE,color.VERDE};
 	  // Inicializamos a verde todos los semaforos 
-	  this.matrizSemaforo = new int [] [] {{1,2,3},{VERDE.ordinal(),VERDE.ordinal(),VERDE.ordinal()}} ;
+	  this.matrizSemaforo = new int [] [] {{1,2,3},{VERDE.ordinal(),VERDE.ordinal(),VERDE.ordinal()}};
   }
   
   // Metodo auxiliar con los colores correctos
@@ -52,11 +55,12 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	   }
   }
   
-  public void avisarPresencia(boolean presencia) { 
+  public void avisarPresencia(boolean presencia) {
+	  // Modificar este metodo con presencia = false y || presencia = true
     mutex.enter();
     //-----POST--------
     this.presencia = presencia;
-   coloresCorrectos();
+    coloresCorrectos();
     mutex.leave();
      
   }
@@ -111,116 +115,190 @@ public class EnclavamientoMonitor implements Enclavamiento {
   @Override
   public Control.Color leerCambioSemaforo(int i, Control.Color actual) {
 	    mutex.enter();
-	    // Declaro variable color que devolvemremos 
 	    Control.Color esperado = VERDE;
-	    // si no se cumple la PRE --> EXCEPCION
-	    if ( i == 0) {
-	    	throw new PreconditionFailedException();
-	    }  else {
-	    /* CASO 1: semaforo: 1 y color actual: VERDE
-	     * se cumple i != 1
+	    /* Caso 1: Semaforo 1, color : Verde
 	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 1 && actual.equals(VERDE)) {
-	    	condiciones[2].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 1 && !actual.equals(VERDE) && condiciones[2].waiting() > 0) {
-	    	condiciones[2].signal();
+	    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+	    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[1][VERDE.ordinal()]) {
+	    	// Se crea nueva condicion
+	    	Semaforo pet1 = new Semaforo (i,actual);
+	    	// Se almacena en la lista
+	    	lista.add(pet1);
+	    	// Se pone en espera en la lista
+	    	pet1.condicion1Verde.await();
+	    	
+	    // SI SE CUMPLE LA CPRE -->	
+	    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[1][VERDE.ordinal()]) {
+	    	//POST
 	    	esperado = VERDE;
+	    //DESBLOQUEOS
+	    	if( !lista.isEmpty() ) {
+	    		lista.getLast().condicion1Verde.signal();
+	    	}
 	    }
-	    /* CASO 2: semaforo: 1 y color actual: AMARILLO
-	     * se cumple i != 1
+	    /* Caso 2: Semaforo 1, color : Amarillo
 	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 1 && actual.equals(AMARILLO)) {
-	    	condiciones[3].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 1 && !actual.equals(AMARILLO) && condiciones[3].waiting() > 0) {
-	    	condiciones[3].signal();
+	    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+	    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[1][AMARILLO.ordinal()]) {
+	    	// Se crea nueva condicion
+	    	Semaforo pet2 = new Semaforo (i,actual);
+	    	// Se almacena en la lista
+	    	lista.add(pet2);
+	    	// Se pone en espera en la lista
+	    	pet2.condicion1Amarillo.await();
+	    	
+	    // SI SE CUMPLE LA CPRE -->	
+	    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[1][AMARILLO.ordinal()]) {
+	    	//POST
 	    	esperado = AMARILLO;
+	    //DESBLOQUEOS
+	    	if( !lista.isEmpty() ) {
+	    		lista.getLast().condicion1Amarillo.signal();
+	    	}
 	    }
-	    /* CASO 3: semaforo: 1 y color actual: ROJO
-	     * se cumple i != 1
+	    /* Caso 3: Semaforo 1, color : Rojo
 	     */
-	 // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 1 && actual.equals(ROJO)) {
-	    	condiciones[4].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 1 && !actual.equals(ROJO) && condiciones[4].waiting() > 0) {
-	    	condiciones[4].signal();
+	    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+	    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[1][ROJO.ordinal()]) {
+	    	// Se crea nueva condicion
+	    	Semaforo pet3 = new Semaforo (i,actual);
+	    	// Se almacena en la lista
+	    	lista.add(pet3);
+	    	// Se pone en espera en la lista
+	    	pet3.condicion1Rojo.await();
+	    	
+	    // SI SE CUMPLE LA CPRE -->	
+	    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[1][ROJO.ordinal()]) {
+	    	//POST
 	    	esperado = ROJO;
+	    //DESBLOQUEOS
+	    	if( !lista.isEmpty() ) {
+	    		lista.getLast().condicion1Rojo.signal();
+	    	}
+	    	/* Caso 4: Semaforo 2, color : Verde
+		     */
+		    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+		    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[2][VERDE.ordinal()]) {
+		    	// Se crea nueva condicion
+		    	Semaforo pet4 = new Semaforo (i,actual);
+		    	// Se almacena en la lista
+		    	lista.add(pet4);
+		    	// Se pone en espera en la lista
+		    	pet4.condicion2Verde.await();
+		    	
+		    // SI SE CUMPLE LA CPRE -->	
+		    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[2][VERDE.ordinal()]) {
+		    	//POST
+		    	esperado = VERDE;
+		    //DESBLOQUEOS
+		    	if( !lista.isEmpty() ) {
+		    		lista.getLast().condicion2Verde.signal();
+		    	}
+		    }
+		    /* Caso 5: Semaforo 2, color : Amarillo
+		     */
+		    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+		    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[2][AMARILLO.ordinal()]) {
+		    	// Se crea nueva condicion
+		    	Semaforo pet5 = new Semaforo (i,actual);
+		    	// Se almacena en la lista
+		    	lista.add(pet5);
+		    	// Se pone en espera en la lista
+		    	pet5.condicion2Amarillo.await();
+		    	
+		    // SI SE CUMPLE LA CPRE -->	
+		    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[2][AMARILLO.ordinal()]) {
+		    	//POST
+		    	esperado = AMARILLO;
+		    //DESBLOQUEOS
+		    	if( !lista.isEmpty() ) {
+		    		lista.getLast().condicion2Amarillo.signal();
+		    	}
+		    }
+		    /* Caso 3: Semaforo 1, color : Rojo
+		     */
+		    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+		    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[2][ROJO.ordinal()]) {
+		    	// Se crea nueva condicion
+		    	Semaforo pet6 = new Semaforo (i,actual);
+		    	// Se almacena en la lista
+		    	lista.add(pet6);
+		    	// Se pone en espera en la lista
+		    	pet6.condicion2Rojo.await();
+		    	
+		    // SI SE CUMPLE LA CPRE -->	
+		    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[2][ROJO.ordinal()]) {
+		    	//POST
+		    	esperado = ROJO;
+		    //DESBLOQUEOS
+		    	if( !lista.isEmpty() ) {
+		    		lista.getLast().condicion2Rojo.signal();
+		    	}
 	    }
-	    /* CASO 4: semaforo: 2 y color actual: VERDE
-	     * se cumple i != 1
-	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 2 && actual.equals(VERDE)) {
-	    	condiciones[5].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 2 && !actual.equals(VERDE) && condiciones[5].waiting() > 0) {
-	    	condiciones[5].signal();
-	    	esperado = VERDE;
-	    }
-	    /* CASO 5: semaforo: 2 y color actual: AMARILLO
-	     * se cumple i != 1
-	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 2 && actual.equals(AMARILLO)) {
-	    	condiciones[6].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 2 && !actual.equals(AMARILLO) && condiciones[6].waiting() > 0) {
-	    	condiciones[6].signal();
-	    	esperado = AMARILLO;
-	    }
-	    /* CASO 6: semaforo: 2 y color actual: ROJO
-	     * se cumple i != 1
-	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 2 && actual.equals(ROJO)) {
-	    	condiciones[7].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 2 && !actual.equals(ROJO) && condiciones[7].waiting() > 0) {
-	    	condiciones[7].signal();
-	    	esperado = ROJO;
-	    }
-	    /* CASO 7: semaforo: 3 y color actual: VERDE
-	     * se cumple i != 1
-	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 3 && actual.equals(VERDE)) {
-	    	condiciones[8].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 3 && !actual.equals(VERDE) && condiciones[8].waiting() > 0) {
-	    	condiciones[8].signal();
-	    	esperado = VERDE;
-	    }
-	    /* CASO 8: semaforo: 1 y color actual: AMARILLO
-	     * se cumple i != 1
-	     */
-	    // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 3 && actual.equals(AMARILLO)) {
-	    	condiciones[9].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 3 && !actual.equals(AMARILLO) && condiciones[9].waiting() > 0) {
-	    	condiciones[9].signal();
-	    	esperado = AMARILLO;
-	    }
-	    /* CASO 9: semaforo: 3 y color actual: ROJO
-	     * se cumple i != 1
-	     */
-	 // Si coinciden los colores del semaforo--> Se bloquea
-	    if ( i == 3 && actual.equals(ROJO)) {
-	    	condiciones[10].await();
-	    // Si no coinciden los colores del semaforo--> Senaliza
-	    } else if (i == 3 && !actual.equals(ROJO) && condiciones[10].waiting() > 0) {
-	    	condiciones[10].signal();
-	    	esperado = ROJO;
+		    /* Caso 7: Semaforo 3, color : Verde
+		     */
+		    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+		    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[3][VERDE.ordinal()]) {
+		    	// Se crea nueva condicion
+		    	Semaforo pet7 = new Semaforo (i,actual);
+		    	// Se almacena en la lista
+		    	lista.add(pet7);
+		    	// Se pone en espera en la lista
+		    	pet7.condicion3Verde.await();
+		    	
+		    // SI SE CUMPLE LA CPRE -->	
+		    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[3][VERDE.ordinal()]) {
+		    	//POST
+		    	esperado = VERDE;
+		    //DESBLOQUEOS
+		    	if( !lista.isEmpty() ) {
+		    		lista.getLast().condicion3Verde.signal();
+		    	}
+		    }
+		    /* Caso 8: Semaforo 3, color : Amarillo
+		     */
+		    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+		    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[3][AMARILLO.ordinal()]) {
+		    	// Se crea nueva condicion
+		    	Semaforo pet8 = new Semaforo (i,actual);
+		    	// Se almacena en la lista
+		    	lista.add(pet8);
+		    	// Se pone en espera en la lista
+		    	pet8.condicion3Amarillo.await();
+		    	
+		    // SI SE CUMPLE LA CPRE -->	
+		    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[3][AMARILLO.ordinal()]) {
+		    	//POST
+		    	esperado = AMARILLO;
+		    //DESBLOQUEOS
+		    	if( !lista.isEmpty() ) {
+		    		lista.getLast().condicion3Amarillo.signal();
+		    	}
+		    }
+		    /* Caso 9: Semaforo 1, color : Rojo
+		     */
+		    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
+		    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[3][ROJO.ordinal()]) {
+		    	// Se crea nueva condicion
+		    	Semaforo pet9 = new Semaforo (i,actual);
+		    	// Se almacena en la lista
+		    	lista.add(pet9);
+		    	// Se pone en espera en la lista
+		    	pet9.condicion3Rojo.await();
+		    	
+		    // SI SE CUMPLE LA CPRE -->	
+		    } else if ( i != 0 && matrizSemaforo[i][actual.ordinal()] != matrizSemaforo[3][ROJO.ordinal()]) {
+		    	//POST
+		    	esperado = ROJO;
+		    //DESBLOQUEOS
+		    	if( !lista.isEmpty() ) {
+		    		lista.getLast().condicion3Rojo.signal();
+		    	}
 	    }
 	    }
-	   
 	    mutex.leave();
 	    return esperado;
-	  }
+  }
 
   @Override
   public void avisarPasoPorBaliza(int i) {
@@ -228,12 +306,52 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    // Si i == 0 --> EXCEPCION
 	    if ( i == 0 ) {
 	    	throw new PreconditionFailedException();
+	    } else if ( i == 1) {
+	    	this.trenes[i] = trenes[i]+1;
+	    } else if( i == 2) {
+	    	this.trenes[i-1]= trenes[i-1]-1;
+	    	this.trenes[i] = trenes[i]+1;
+	    } else if ( i == 3) {
+	    	this.trenes[i-1]= trenes[i-1]-1;
+	    	this.trenes[i] = trenes[i]+1;
+	    } else {
+	    	throw new PreconditionFailedException();
 	    }
-	    // 
+	    
+	    coloresCorrectos();
 
 	    mutex.leave();
 	   
 	  }
+  private static class Semaforo extends EnclavamientoMonitor {
+	  // Declaramos parametros que necesitamos almacenar
+	  
+	  private int i;
+	  private Control.Color actual;
+	  private Monitor.Cond condicion1Verde;
+	  private Monitor.Cond condicion1Amarillo;
+	  private Monitor.Cond condicion1Rojo;
+	  private Monitor.Cond condicion2Verde;
+	  private Monitor.Cond condicion2Amarillo;
+	  private Monitor.Cond condicion2Rojo;
+	  private Monitor.Cond condicion3Verde;
+	  private Monitor.Cond condicion3Amarillo;
+	  private Monitor.Cond condicion3Rojo;
+	  private Semaforo (int i, Control.Color col) {
+		  this.i = i;
+		  this.actual = col;
+		  this.condicion1Verde = mutex.newCond();
+		  this.condicion1Amarillo = mutex.newCond();
+		  this.condicion1Rojo = mutex.newCond();
+		  this.condicion2Verde = mutex.newCond();
+		  this.condicion2Amarillo = mutex.newCond();
+		  this.condicion2Rojo = mutex.newCond();
+		  this.condicion3Verde = mutex.newCond();
+		  this.condicion3Amarillo = mutex.newCond();
+		  this.condicion3Rojo = mutex.newCond();
+	  }
+	  
+  }
  
  
 }
