@@ -12,13 +12,12 @@ public class EnclavamientoMonitor implements Enclavamiento {
   Monitor mutex = new Monitor();
   private Monitor.Cond [] condiciones = new Monitor.Cond [11]; // Declaro array de condiciones
   private boolean presencia;// Declaramos un tipo enumerado para los colores del semaforo
-  private enum color {ROJO,AMARILLO,VERDE};
-  private color ROJO = color.ROJO;
-  private color AMARILLO = color.AMARILLO;
-  private color VERDE = color.VERDE;
+  private Control.Color ROJO = Control.Color.ROJO;
+  private Control.Color AMARILLO = Control.Color.AMARILLO;
+  private Control.Color VERDE = Control.Color.VERDE;
   private int [] trenes; 	// Declaramos un array de trenes para controlar el paso por las balizas
   //private color [] coloresBaliza; // Declaramos array del enumerado Color para los colores de los semaforos
-  private int [] [] matrizSemaforo = new int [3] [3]; // Declaramos matriz para gestionar leerCambioSemaforo con las filas para el nº de semaforo
+  private int [] [] matrizSemaforo = new int [3] [3]; // Declaramos matriz para gestionar leerCambioSemaforo con las filas para el numero de semaforo
   // y las columnas para el color del semaforo
   
   public EnclavamientoMonitor() {
@@ -54,6 +53,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
   }
   
   public void avisarPresencia(boolean presencia) {
+	  // Modificar este metodo con presencia = false y || presencia = true
     mutex.enter();
     
    //------- PRE == CIERTO -------
@@ -97,14 +97,14 @@ public class EnclavamientoMonitor implements Enclavamiento {
     /* Si actual == true --> No se cumple la CPRE --> Se queda en espera el hilo, no es el resultado esperado
 	   * por tanto esperado es falso y salta la excepcion
 	   */
-    if ( actual == false ) { //&& actual != ((this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true ))) {
+    if ( actual == false ) { 
     	condiciones[1].await();
     	esperado = false;
     	throw new PreconditionFailedException();
     }
     /* Si actual == false --> Se cumple la CPRE --> Senaliza el hilo y esperado es verdadero
 	   */
-    if ( actual == true && condiciones[1].waiting() > 0) {//&& actual != ((this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true ))) {
+    if ( actual == true && condiciones[1].waiting() > 0) {
     	condiciones[1].signal();
     	esperado = true;
     	mutex.leave(); 
@@ -115,12 +115,112 @@ public class EnclavamientoMonitor implements Enclavamiento {
   @Override
   public Control.Color leerCambioSemaforo(int i, Control.Color actual) {
 	    mutex.enter();
-	    Control.Color esperado = Control.Color.VERDE;
-	    /* 1º CASO: semaforo: 1 y color actual: VERDE
-	     * 
+	    // Declaro variable color que devolvemremos 
+	    Control.Color esperado = VERDE;
+	    // si no se cumple la PRE --> EXCEPCION
+	    if ( i == 0) {
+	    	throw new PreconditionFailedException();
+	    }  else {
+	    /* CASO 1: semaforo: 1 y color actual: VERDE
+	     * se cumple i != 1
 	     */
-	    
-	    
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 1 && actual.equals(VERDE)) {
+	    	condiciones[2].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 1 && !actual.equals(VERDE) && condiciones[2].waiting() > 0) {
+	    	condiciones[2].signal();
+	    	esperado = VERDE;
+	    }
+	    /* CASO 2: semaforo: 1 y color actual: AMARILLO
+	     * se cumple i != 1
+	     */
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 1 && actual.equals(AMARILLO)) {
+	    	condiciones[3].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 1 && !actual.equals(AMARILLO) && condiciones[3].waiting() > 0) {
+	    	condiciones[3].signal();
+	    	esperado = AMARILLO;
+	    }
+	    /* CASO 3: semaforo: 1 y color actual: ROJO
+	     * se cumple i != 1
+	     */
+	 // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 1 && actual.equals(ROJO)) {
+	    	condiciones[4].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 1 && !actual.equals(ROJO) && condiciones[4].waiting() > 0) {
+	    	condiciones[4].signal();
+	    	esperado = ROJO;
+	    }
+	    /* CASO 4: semaforo: 2 y color actual: VERDE
+	     * se cumple i != 1
+	     */
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 2 && actual.equals(VERDE)) {
+	    	condiciones[5].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 2 && !actual.equals(VERDE) && condiciones[5].waiting() > 0) {
+	    	condiciones[5].signal();
+	    	esperado = VERDE;
+	    }
+	    /* CASO 5: semaforo: 2 y color actual: AMARILLO
+	     * se cumple i != 1
+	     */
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 2 && actual.equals(AMARILLO)) {
+	    	condiciones[6].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 2 && !actual.equals(AMARILLO) && condiciones[6].waiting() > 0) {
+	    	condiciones[6].signal();
+	    	esperado = AMARILLO;
+	    }
+	    /* CASO 6: semaforo: 2 y color actual: ROJO
+	     * se cumple i != 1
+	     */
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 2 && actual.equals(ROJO)) {
+	    	condiciones[7].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 2 && !actual.equals(ROJO) && condiciones[7].waiting() > 0) {
+	    	condiciones[7].signal();
+	    	esperado = ROJO;
+	    }
+	    /* CASO 7: semaforo: 3 y color actual: VERDE
+	     * se cumple i != 1
+	     */
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 3 && actual.equals(VERDE)) {
+	    	condiciones[8].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 3 && !actual.equals(VERDE) && condiciones[8].waiting() > 0) {
+	    	condiciones[8].signal();
+	    	esperado = VERDE;
+	    }
+	    /* CASO 8: semaforo: 1 y color actual: AMARILLO
+	     * se cumple i != 1
+	     */
+	    // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 3 && actual.equals(AMARILLO)) {
+	    	condiciones[9].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 3 && !actual.equals(AMARILLO) && condiciones[9].waiting() > 0) {
+	    	condiciones[9].signal();
+	    	esperado = AMARILLO;
+	    }
+	    /* CASO 9: semaforo: 3 y color actual: ROJO
+	     * se cumple i != 1
+	     */
+	 // Si coinciden los colores del semaforo--> Se bloquea
+	    if ( i == 3 && actual.equals(ROJO)) {
+	    	condiciones[10].await();
+	    // Si no coinciden los colores del semaforo--> Senaliza
+	    } else if (i == 3 && !actual.equals(ROJO) && condiciones[10].waiting() > 0) {
+	    	condiciones[10].signal();
+	    	esperado = ROJO;
+	    }
+	    }
 	   
 	    mutex.leave();
 	    return esperado;
@@ -129,6 +229,11 @@ public class EnclavamientoMonitor implements Enclavamiento {
   @Override
   public void avisarPasoPorBaliza(int i) {
 	    mutex.enter();
+	    // Si i == 0 --> EXCEPCION
+	    if ( i == 0 ) {
+	    	throw new PreconditionFailedException();
+	    }
+	    // 
 
 	    mutex.leave();
 	   
