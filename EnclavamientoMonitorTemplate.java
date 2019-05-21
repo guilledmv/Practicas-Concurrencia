@@ -1,8 +1,7 @@
-package Practica1;
+//package Practica1;
 import es.upm.babel.cclib.Monitor;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
 //Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 
@@ -18,8 +17,13 @@ public class EnclavamientoMonitor implements Enclavamiento {
   private Control.Color AMARILLO = Control.Color.AMARILLO;
   private Control.Color VERDE = Control.Color.VERDE;
   private int [] trenes; 	// Declaramos un array de trenes para controlar el paso por las balizas
-  //private color [] coloresBaliza; // Declaramos array del enumerado Color para los colores de los semaforos
-  private int [] [] matrizSemaforo = new int [3] [3]; // Declaramos matriz para gestionar leerCambioSemaforo con las filas para el numero de semaforo
+  
+  
+  
+  private Control.Color [] coloresBaliza; // Declaramos array del enumerado control.Color para los colores de los semaforos
+  
+  
+  //private int [] [] matrizSemaforo = new int [4] [4]; // Declaramos matriz para gestionar leerCambioSemaforo con las filas para el numero de semaforo
   // y las columnas para el color del semaforo
   private LinkedList<Semaforo> lista = new LinkedList <Semaforo>();
   
@@ -33,25 +37,33 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  // Inicializamos a VERDE todos los colores de los semaforos
 	  //this.coloresBaliza = new color[] {color.VERDE,color.VERDE,color.VERDE,color.VERDE};
 	  // Inicializamos a verde todos los semaforos 
-	  this.matrizSemaforo = new int [] [] {{1,2,3},{VERDE.ordinal(),VERDE.ordinal(),VERDE.ordinal()}};
+	  //this.matrizSemaforo = new int [] [] {{0,1,2,3},{VERDE.ordinal(), VERDE.ordinal(),VERDE.ordinal(),VERDE.ordinal()}};
+	  this.coloresBaliza= new Control.Color [] {VERDE, VERDE, VERDE, VERDE};
+	  
   }
   
   // Metodo auxiliar con los colores correctos
   private void coloresCorrectos () {
 	// Implementacion colores correctos
 	   if( trenes[1]>0 ) {
-		   this.matrizSemaforo[1] [VERDE.ordinal()] = matrizSemaforo [1] [ROJO.ordinal()]; 
+		   //this.matrizSemaforo[1] [VERDE.ordinal()] = matrizSemaforo [1] [ROJO.ordinal()];
+		  this.coloresBaliza[1] = ROJO; 
 	   } else if( trenes[1] == 0 && ( trenes[2]>0 || presencia == true)) {
-		   this.matrizSemaforo[1][VERDE.ordinal()] = matrizSemaforo [1] [AMARILLO.ordinal()];
+		   //this.matrizSemaforo[1][VERDE.ordinal()] = matrizSemaforo [1] [AMARILLO.ordinal()];
+		   this.coloresBaliza[1] = AMARILLO; 	   
 	   } else if( trenes[1] == 0 && trenes[2] == 0 && presencia == false) {
-		   this.matrizSemaforo[1][VERDE.ordinal()] = matrizSemaforo [1] [VERDE.ordinal()];
+		   //this.matrizSemaforo[1][VERDE.ordinal()] = matrizSemaforo [1] [VERDE.ordinal()];
+		   this.coloresBaliza[1] =VERDE; 
 	   } else if( trenes[2]>0 || presencia == true) {
 		   //coloresBaliza[2] = color.ROJO;
-		   this.matrizSemaforo[2][VERDE.ordinal()] = matrizSemaforo [2] [ROJO.ordinal()];
+		   //this.matrizSemaforo[2][VERDE.ordinal()] = matrizSemaforo [2] [ROJO.ordinal()];
+		   this.coloresBaliza[2] = ROJO; 
 	   } else if( trenes[2] == 0 && presencia == false) {
-		   this.matrizSemaforo[2][VERDE.ordinal()] = matrizSemaforo [2] [VERDE.ordinal()];
+		   //this.matrizSemaforo[2][VERDE.ordinal()] = matrizSemaforo [2] [VERDE.ordinal()];
+		   this.coloresBaliza[2] = VERDE; 
 	   } else {
-		   this.matrizSemaforo[3][VERDE.ordinal()] = matrizSemaforo [3] [VERDE.ordinal()];
+		   //this.matrizSemaforo[3][VERDE.ordinal()] = matrizSemaforo [3] [VERDE.ordinal()];
+		   this.coloresBaliza[3] = VERDE; 
 	   }
   }
   
@@ -119,7 +131,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    /* Caso 1: Semaforo 1, color : Verde
 	     */
 	    // SI NO SE CUMPLE LA CPRE --> SE CREA NUEVA CONDITION Y SE ALMACENA EN COLA
-	    if ( i == 0 || matrizSemaforo[i][actual.ordinal()] == matrizSemaforo[1][VERDE.ordinal()]) {
+	    if ( i == 0 || actual.equals(this.coloresBaliza[i])) {
 	    	// Se crea nueva condicion
 	    	Semaforo pet1 = new Semaforo (i,actual);
 	    	// Se almacena en la lista
@@ -294,8 +306,9 @@ public class EnclavamientoMonitor implements Enclavamiento {
 		    	if( !lista.isEmpty() ) {
 		    		lista.getLast().condicion3Rojo.signal();
 		    	}
-	    }
-	    }
+	   
+  }
+}
 	    mutex.leave();
 	    return esperado;
   }
