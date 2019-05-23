@@ -123,7 +123,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  }
 	    mutex.enter();
 	    // Declaramos color que devolveremos 
-	    Control.Color encendido = VERDE;
+	    Control.Color encendido;
 	    // Si no se cumple la CPRE--> ESPERA
 	    if ( i == 1 && actual.equals(coloresBaliza[1])) {
 	    // Creamos condicion para semaforo 1
@@ -172,7 +172,6 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    	// Desbloqueo
 	    	desbloquearSemaforo();
 	    }
-	    
 	    mutex.leave();
 	    return encendido;
   }
@@ -196,7 +195,6 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    
 	    coloresCorrectos();
 	    mutex.leave();
-	   
 	  }
   private class Peticion {
 	  
@@ -221,17 +219,16 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  private Control.Color color;
 	  private Monitor.Cond condition;
 	  
-	  private Semaforo(int id , Control.Color actual, Cond condS1) {
+	  private Semaforo(int id , Control.Color actual, Cond cond) {
 		  this.numeroSemaforo = id;
 		  this.color = actual;
-		  this.condition = condS1;
+		  this.condition = cond;
 	  }
 	  private int getNumeroSemaforo() {
 		  return this.numeroSemaforo;
 	  }
 	  private Control.Color getColor() {
-			  return this.color;
-		  
+			  return this.color;  
 	  }
 	 private Monitor.Cond getCondition(){
 			 return this.condition;
@@ -247,7 +244,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			lista.getLast(); // quitamos la peticion
 			
 			//se cumple la CPRE
-			if(peticion.getActivo() == true) { 
+			if(peticion.getActivo() == true && peticion.getCondition().waiting() > 0) { 
 				peticion.getCondition().signal(); // hacemos un signal
 				senalizado = true;    // ya hemos senalizado
 			// No se cumple la CPRE
@@ -265,17 +262,17 @@ public class EnclavamientoMonitor implements Enclavamiento {
 		  listaSemaforo.getLast(); // Quitamos la peticion
 		  
 		  // se cumple la CPRE para semaforo 1
-		  if (sem.getNumeroSemaforo() == 1 && !sem.getColor().equals(coloresBaliza[1])) {
+		  if (sem.getNumeroSemaforo() == 1 && !sem.getColor().equals(coloresBaliza[1]) && sem.getCondition().waiting() > 0) {
 			  sem.getCondition().signal(); // Hacemos un signal
 			  senalizado = true;
 		  }
 		  // Se cumple la CPRE para semaforo 2
-		  if (sem.getNumeroSemaforo() == 2 && !sem.getColor().equals(coloresBaliza[1])) {
+		  if (sem.getNumeroSemaforo() == 2 && !sem.getColor().equals(coloresBaliza[1]) && sem.getCondition().waiting() > 0) {
 			  sem.getCondition().signal(); // Hacemos un signal
 			  senalizado = true;
 	  }
 		  // Se cumple la CPRE para semaforo 3
-		  if (sem.getNumeroSemaforo() == 3 && !sem.getColor().equals(coloresBaliza[1])) {
+		  if (sem.getNumeroSemaforo() == 3 && !sem.getColor().equals(coloresBaliza[1]) && sem.getCondition().waiting() > 0) {
 			  sem.getCondition().signal(); // Hacemos un signal
 			  senalizado = true;
 		  // No se cumple la CPRE
@@ -284,7 +281,5 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  listaSemaforo.add(sem);
   }
 	  }
- 
- 
   }
 }
