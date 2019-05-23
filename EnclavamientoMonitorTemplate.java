@@ -1,7 +1,9 @@
-package Practica1;
+//package Practica1;
 import es.upm.babel.cclib.Monitor;
+import es.upm.babel.cclib.Monitor.Cond;
+
 import java.util.LinkedList;
-import java.util.List;
+
 
 //Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 
@@ -122,17 +124,53 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    mutex.enter();
 	    // Declaramos color que devolveremos 
 	    Control.Color encendido = VERDE;
-	    // SI NO SE CUMPLE LA CPRE--> ESPERA
-	    if (  ) {
-	  // Creamos condicion de freno
-	  		Monitor.Cond condS1 = mutex.newCond();
-	  // metemos a la lista
-	  		listaSemaforo.add(new Semaforo(i,actual,condS1));
-	  // Ponemos en espera
-	  		condS1.await();
-	  // Lanzamos excepcion
-	  		throw new PreconditionFailedException();	
-	    	
+	    // Si no se cumple la CPRE--> ESPERA
+	    if ( i == 1 && actual.equals(coloresBaliza[1])) {
+	    // Creamos condicion para semaforo 1
+	    	Monitor.Cond condS1 = mutex.newCond();
+	    // Metemos a la lista el semaforo
+	    	listaSemaforo.add(new Semaforo(i,actual,condS1));
+	    // Ponemos en espera la condicion
+	    	condS1.await();
+	    // Salta excepcion, ya que no se cumple la CPRE
+	    	throw new PreconditionFailedException();
+	    } else {
+	    	// Cambio valor de encendido al que haya en self.color(i)
+	    	encendido = coloresBaliza[1];
+	    	// Desbloqueo
+	    	desbloquearSemaforo();
+	    }
+	 // Si no se cumple la CPRE--> ESPERA
+	    if ( i == 2 && actual.equals(coloresBaliza[2])) {
+	    // Creamos condicion para semaforo 2
+	    	Monitor.Cond condS2 = mutex.newCond();
+	    // Metemos a la lista el semaforo
+	    	listaSemaforo.add(new Semaforo(i,actual,condS2));
+	    // Ponemos en espera la condicion
+	    	condS2.await();
+	    // Salta excepcion, ya que no se cumple la CPRE
+	    	throw new PreconditionFailedException();
+	    } else {
+	    	// Cambio valor de encendido al que haya en self.color(i)
+	    	encendido = coloresBaliza[2];
+	    	// Desbloqueo
+	    	desbloquearSemaforo();
+	    }
+	 // Si no se cumple la CPRE--> ESPERA
+	    if ( i == 3 && actual.equals(coloresBaliza[3])) {
+	    // Creamos condicion para semaforo 1
+	    	Monitor.Cond condS3 = mutex.newCond();
+	    // Metemos a la lista el semaforo
+	    	listaSemaforo.add(new Semaforo(i,actual,condS3));
+	    // Ponemos en espera la condicion
+	    	condS3.await();
+	    // Salta excepcion, ya que no se cumple la CPRE
+	    	throw new PreconditionFailedException();
+	    } else {
+	    	// Cambio valor de encendido al que haya en self.color(i)
+	    	encendido = coloresBaliza[3];
+	    	// Desbloqueo
+	    	desbloquearSemaforo();
 	    }
 	    
 	    mutex.leave();
@@ -141,11 +179,12 @@ public class EnclavamientoMonitor implements Enclavamiento {
 
   @Override
   public void avisarPasoPorBaliza(int i) {
-	    mutex.enter();
 	    // Si i == 0 --> EXCEPCION
 	    if ( i == 0 || i > 3) {
 	    	throw new PreconditionFailedException();
-	    } else if ( i == 1) {
+	    } 
+	    mutex.enter();
+	    if ( i == 1) {
 	    	this.trenes[i] = trenes[i]+1;
 	    } else if( i == 2) {
 	    	this.trenes[i-1]= trenes[i-1]-1;
@@ -153,9 +192,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    } else if ( i == 3) {
 	    	this.trenes[i-1]= trenes[i-1]-1;
 	    	this.trenes[i] = trenes[i]+1;
-	    } else {
-	    	throw new PreconditionFailedException();
-	    }
+	    } 
 	    
 	    coloresCorrectos();
 	    mutex.leave();
@@ -181,25 +218,23 @@ public class EnclavamientoMonitor implements Enclavamiento {
   private class Semaforo {
 	  
 	  private int numeroSemaforo;
-	  private Control.Color [] color;
-	  private Monitor.Cond [] condition;
+	  private Control.Color color;
+	  private Monitor.Cond condition;
 	  
-	  private Semaforo(int id , Control.Color [] col, Monitor.Cond [] cond) {
+	  private Semaforo(int id , Control.Color actual, Cond condS1) {
 		  this.numeroSemaforo = id;
-		  for (int i = 1; i <= 3; i++) {
-			 this.color[i] = col[i];
-			 this.condition[i] = cond[i];
-		  }
+		  this.color = actual;
+		  this.condition = condS1;
 	  }
 	  private int getNumeroSemaforo() {
 		  return this.numeroSemaforo;
 	  }
 	  private Control.Color getColor() {
-			  return this.color[numeroSemaforo];
+			  return this.color;
 		  
 	  }
 	 private Monitor.Cond getCondition(){
-			 return this.condition[numeroSemaforo];
+			 return this.condition;
 	 }
 	 
 	 }
@@ -222,7 +257,34 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			}
 		}
 	}
+  private void desbloquearSemaforo() {
+	  boolean senalizado = false;
+	  int size = listaSemaforo.size();
+	  for ( int i = 0; i < size && !senalizado; i++) {
+		  Semaforo sem = listaSemaforo.getFirst();
+		  listaSemaforo.getLast(); // Quitamos la peticion
+		  
+		  // se cumple la CPRE para semaforo 1
+		  if (sem.getNumeroSemaforo() == 1 && !sem.getColor().equals(coloresBaliza[1])) {
+			  sem.getCondition().signal(); // Hacemos un signal
+			  senalizado = true;
+		  }
+		  // Se cumple la CPRE para semaforo 2
+		  if (sem.getNumeroSemaforo() == 2 && !sem.getColor().equals(coloresBaliza[1])) {
+			  sem.getCondition().signal(); // Hacemos un signal
+			  senalizado = true;
+	  }
+		  // Se cumple la CPRE para semaforo 3
+		  if (sem.getNumeroSemaforo() == 3 && !sem.getColor().equals(coloresBaliza[1])) {
+			  sem.getCondition().signal(); // Hacemos un signal
+			  senalizado = true;
+		  // No se cumple la CPRE
+  }	else {
+	  //condition que no has de despertar, a la lista de nuevo
+	  listaSemaforo.add(sem);
+  }
+	  }
  
  
- 
+  }
 }
