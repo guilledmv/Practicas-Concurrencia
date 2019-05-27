@@ -5,252 +5,270 @@ import es.upm.aedlib.fifo.FIFO;
 import es.upm.aedlib.fifo.FIFOList;
 
 
-//Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
+// Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
+// Algoritmo usado para la resolucion de metodos en los que la CPRE depende de parametros de entrada --> Indexacion por Cliente
 
 public class EnclavamientoMonitor implements Enclavamiento {
-	
+
 
 	//------------- VARIABLES GLOBALES -------------
 
-  Monitor mutex = new Monitor();
-  private boolean presencia;// Declaramos un tipo enumerado para los colores del semaforo
-  private int [] trenes; 	// Declaramos un array de trenes para controlar el paso por las balizas
-  private Control.Color [] coloresBaliza; // Declaramos array del enumerado control.Color para los colores de los semaforos
-  private FIFO<PeticionBarrera> listaBarrera = new FIFOList<PeticionBarrera>();
-  private FIFO<PeticionFreno> listaFreno = new FIFOList<PeticionFreno>();
-  private FIFO<PeticionSemaforo> listaSemaforo = new FIFOList<PeticionSemaforo>();
-  
-  public EnclavamientoMonitor() {
-	  this.presencia = false; // Inicializamos la presencia--> false
-	  this.trenes = new int [] {0,0,0,0}; // Declaro el array de trenes inicializando a 0 el numero de trenes despues de cada baliza
-	  // Inicializamos a VERDE todos los colores de los semaforos
-	  // Inicializamos a verde todos los semaforos 
-	  this.coloresBaliza = new Control.Color [] {Control.Color.VERDE, Control.Color.VERDE,Control.Color.VERDE,Control.Color.VERDE};
-  }
-  
-  // Metodo auxiliar con los colores correctos
-  private void coloresCorrectos () {
-	// Implementacion colores correctos
-	   if( trenes[1] > 0 ) {
-		   this.coloresBaliza[1] = Control.Color.ROJO; 
-	   } if( trenes[1] == 0 && ( trenes[2] > 0 || presencia == true )) {
-		   this.coloresBaliza[1] = Control.Color.AMARILLO; 	   
-	   } if( trenes[1] == 0 && trenes[2] == 0 && presencia == false ) {
-		   this.coloresBaliza[1] = Control.Color.VERDE; 
-	   } if( trenes[2] > 0 || presencia == true ) {
-		   this.coloresBaliza[2] = Control.Color.ROJO; 
-	   } if( trenes[2] == 0 && presencia == false ) {
-		   this.coloresBaliza[2] = Control.Color.VERDE; 
-	   } 
-		   this.coloresBaliza[3] = Control.Color.VERDE; 
-  }
-  
-  public void avisarPresencia(boolean presencia) {
-    mutex.enter();
-    //-----POST--------
-    this.presencia = presencia;
-    coloresCorrectos();
-    desbloquear();
-    mutex.leave();
-     
-  }
+	Monitor mutex = new Monitor();
+	private boolean presencia; // DECLARAMOS EL ATRIBUTO PRESENCIA, PARA DETECTAR PRESENCIA EN EL CRUCE
+	private int [] trenes; 	// DECLARAMOS ARRAY DE TRENES PARA CONTROLAR EL PASO POR LAS BALIZAS
+	private Control.Color [] coloresBaliza; // DECLARAMOS UN ARRAY DE COLORES PARA LOS SEMAFOROS
+	private FIFO<PeticionBarrera> listaBarrera = new FIFOList<PeticionBarrera>(); // DECLARAMOS TRES COLAS PARA ALMACENAR LAS PETICIONES DE BARRERA, FRENO Y SEMAFORO
+	private FIFO<PeticionFreno> listaFreno = new FIFOList<PeticionFreno>();
+	private FIFO<PeticionSemaforo> listaSemaforo = new FIFOList<PeticionSemaforo>();
 
-  public boolean leerCambioBarrera(boolean actual) {
-	  // Analizamos dos casos--> caso actual = true Y caso actual = false
-	  mutex.enter();
-	  //Declaramos variable booleana que devolveremos
-	  boolean esperado = (this.trenes[1] + this.trenes[2] == 0);
-	  // Si no se cumple la CPRE--> ESPERA
-	  	if ( actual == (this.trenes[1] + this.trenes[2] == 0) ) {
-	  // Creamos condicion de barrera
-	  		Monitor.Cond levantarBarrera = mutex.newCond();
-	  // metemos a la lista
-	  		listaBarrera.enqueue(new PeticionBarrera(actual,levantarBarrera));
-	  // Ponemos en espera
-	  		levantarBarrera.await();
-	  // Si se cumple la CPRE--> SENALIZA
-	  	}
-	  		// Desbloqueo de condicion
-		  desbloquear();	
-		  mutex.leave();
-		  return esperado;
-		  
-	  }
+	public EnclavamientoMonitor() {
 
-  @Override
-  public boolean leerCambioFreno(boolean actual) {
-	  // Analizamos dos casos--> caso actual = true Y caso actual = false
-	  mutex.enter();
-	  //Declaramos variable booleana que devolveremos
-	  boolean esperado = (this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true);
-	  // Si no se cumple la CPRE--> ESPERA
-	  	if ( actual == (this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true )) {
-	  // Creamos condicion de freno
-	  		Monitor.Cond activarFreno = mutex.newCond();
-	  // metemos a la lista
-	  		listaFreno.enqueue(new PeticionFreno(actual,activarFreno));
-	  // Ponemos en espera
-	  		activarFreno.await();
-	  // Si se cumple la CPRE--> SENALIZA
-	  	} 
-	  		// Desbloqueo de condicion
-		  desbloquear();	
-		  mutex.leave();
-		  return esperado;
-  }
+		// INICIALIZAMOS LOS ATRIBUTOS A LOS VALORES DEL CTAD, ES DECIR :
+		// PRESENCIA--> FALSE
+		// NUMERO DE TRENES DESPUES DE CADA BALIZA A 0
+		// Y COLORES DE LOS 3 SEMAFOROS EN VERDE
 
-  @Override
-  public Control.Color leerCambioSemaforo(int i, Control.Color actual) {
-	  // Si no esta en ningun semaforo
-	  if ( i == 0) {
-		  throw new PreconditionFailedException();
-	  }
-	    mutex.enter();
-	    // Declaramos color que devolveremos 
-	    Control.Color encendido = coloresBaliza[i];
-	    // Si no se cumple la CPRE--> ESPERA
-	    if ( actual.equals(coloresBaliza[i]) ) {
-	    // Creamos condicion para semaforo 1
-	    	Monitor.Cond condSemaforo = mutex.newCond();
-	    // Metemos a la lista el semaforo
-	    	listaSemaforo.enqueue(new PeticionSemaforo(i,actual,condSemaforo));
-	    // Ponemos en espera la condicion
-	    	condSemaforo.await();
-	    } 
-	    	// Desbloqueo
-	    	desbloquear();
-	    	mutex.leave();
-	    	return encendido;
-  }
+		this.presencia = false; 
+		this.trenes = new int [] {0,0,0,0}; 
+		this.coloresBaliza = new Control.Color [] {Control.Color.VERDE, Control.Color.VERDE,Control.Color.VERDE,Control.Color.VERDE};
 
-  @Override
-  public void avisarPasoPorBaliza(int i) {
-	    // Si i == 0 --> EXCEPCION
-	    if ( i == 0) {
-	    	throw new PreconditionFailedException();
-	    } 
-	    mutex.enter();
-	    this.trenes[i-1] = trenes [i-1]-1;
-	    this.trenes[i] = trenes[i]+1;
-	    coloresCorrectos();
-	    desbloquear();
-	    mutex.leave();
-	    }
-  
-  private class PeticionBarrera {
-	  
-	  private boolean activo;
-	  private Monitor.Cond condition;
-	  
-	  private PeticionBarrera(boolean esperado, Monitor.Cond cond) {
-		  this.activo = esperado;
-		  this.condition = cond;
-	  }
-	  private boolean getActivo() {
-		  return this.activo;
-	  }
-	  private Monitor.Cond getCondition(){
-		  return this.condition;
-	  }
-	  
-  }
- private class PeticionFreno {
-	  
-	  private boolean activo;
-	  private Monitor.Cond condition;
-	  
-	  private PeticionFreno(boolean esperado, Monitor.Cond cond) {
-		  this.activo = esperado;
-		  this.condition = cond;
-	  }
-	  private boolean getActivo() {
-		  return this.activo;
-	  }
-	  private Monitor.Cond getCondition(){
-		  return this.condition;
-	  }
-	  
-  }
-  private class PeticionSemaforo {
-	  
-	  private int numeroSemaforo;
-	  private Control.Color color;
-	  private Monitor.Cond condition;
-	  
-	  private PeticionSemaforo(int id , Control.Color actual, Cond cond) {
-		  this.numeroSemaforo = id;
-		  this.color = actual;
-		  this.condition = cond;
-	  }
-	  private int getNumeroSemaforo() {
-		  return this.numeroSemaforo;
-	  }
-	  private Control.Color getColor() {
-			  return this.color;  
-	  }
-	 private Monitor.Cond getCondition(){
-			 return this.condition;
-	 }
-	 
-	 }
-  
-  private void desbloquear() {
+	}
+
+	// METODO AUXILIAR QUE IMPLEMENTA LOS COLORES CORRECTOS
+	private void coloresCorrectos () {
+
+		if( trenes[1] > 0 ) {
+			this.coloresBaliza[1] = Control.Color.ROJO; 
+		} if( trenes[1] == 0 && ( trenes[2] > 0 || presencia == true )) {
+			this.coloresBaliza[1] = Control.Color.AMARILLO; 	   
+		} if( trenes[1] == 0 && trenes[2] == 0 && presencia == false ) {
+			this.coloresBaliza[1] = Control.Color.VERDE; 
+		} if( trenes[2] > 0 || presencia == true ) {
+			this.coloresBaliza[2] = Control.Color.ROJO; 
+		} if( trenes[2] == 0 && presencia == false ) {
+			this.coloresBaliza[2] = Control.Color.VERDE; 
+		} 
+		this.coloresBaliza[3] = Control.Color.VERDE; 
+	}
+
+	public void avisarPresencia(boolean presencia) {
+
+		mutex.enter();
+		//-----CPRE = CIERTO-----> POR TANTO NO TENEMOS QUE BLOQUEAR NINGUN PROCESO
+
+		//-----POST--------
+		// TOMAMOS EL VALOR DEL BOOLEANO PARAMETRO DE ENTRADA A NUESTRA VARIABLE GLOBAL, LLAMAMOS A ColoresCorrectos() y desbloqueamos
+		this.presencia = presencia;
+		coloresCorrectos();
+		desbloquear();
+		mutex.leave();
+
+	}
+
+	public boolean leerCambioBarrera(boolean actual) {
+		// USAMOS EL mutex PARA ASEGURAR LA EXCLUSION MUTUA
+		mutex.enter();
+		//DECLARAMOS VARIABLE BOOLEANA QUE DEVOLVEREMOS
+		boolean esperado = (this.trenes[1] + this.trenes[2] == 0);
+		// SI NO SE CUMPLE CPRE--> CREA CONDICION ASOCIADA A BARRERA, INSERTA EN LA COLA Y PONE EN ESPERA EL PROCESO
+		if ( actual == (this.trenes[1] + this.trenes[2] == 0) ) {
+			// CREAMOS CONDICION ASOCIADA A BARRERA
+			Monitor.Cond levantarBarrera = mutex.newCond();
+			// ENCOLAMOS
+			listaBarrera.enqueue(new PeticionBarrera(actual,levantarBarrera));
+			// PONEMOS EN ESPERA
+			levantarBarrera.await();	
+		}
+		// SI SE CUMPLE LA CPRE--> DESBLOQUEAMOS Y DEVOLVEMOS EL RESULTADO ESPERADO
+		desbloquear();	
+		mutex.leave();
+		return esperado;
+
+	}
+
+	@Override
+	public boolean leerCambioFreno(boolean actual) {
+		// USAMOS EL mutex PARA ASEGURAR LA EXCLUSION MUTUA
+		mutex.enter();
+		//DECLARAMOS VARIABLE BOOLEANA QUE DEVOLVEREMOS
+		boolean esperado = (this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true);
+		// SI NO SE CUMPLE CPRE--> CREA CONDICION ASOCIADA A FRENO, INSERTA EN LA COLA Y PONE EN ESPERA EL PROCESO
+		if ( actual == (this.trenes[1] > 1 || this.trenes[2] > 1 || this.trenes[2] == 1 && this.presencia == true )) {
+			// CREAMOS CONDICION ASOCIADA A FRENO
+			Monitor.Cond activarFreno = mutex.newCond();
+			// ENCOLAMOS
+			listaFreno.enqueue(new PeticionFreno(actual,activarFreno));
+			// PONEMOS EN ESPERA
+			activarFreno.await();
+		} 
+		// SI SE CUMPLE LA CPRE--> DESBLOQUEAMOS Y DEVOLVEMOS EL RESULTADO ESPERADO
+		desbloquear();	
+		mutex.leave();
+		return esperado;
+	}
+
+	@Override
+	public Control.Color leerCambioSemaforo(int i, Control.Color actual) {
+		// SI NO SE CUMPLE LA PRE --> LANZAMOS EXCEPCION
+		if ( i == 0) {
+			throw new PreconditionFailedException();
+		}
+		// USAMOS EL mutex PARA ASEGURAR LA EXCLUSION MUTUA
+		mutex.enter();
+		// DECLARAMOS COLOR QUE DEVOLVEREMOS
+		Control.Color encendido = coloresBaliza[i];
+		// SI NO SE CUMPLE CPRE--> CREA CONDICION ASOCIADA A SEMAFORO, INSERTA EN LA COLA Y PONE EN ESPERA EL PROCESO
+		if ( actual.equals(coloresBaliza[i]) ) {
+			// CREAMOS CONDICION PARA LOS SEMAFOROS
+			Monitor.Cond condSemaforo = mutex.newCond();
+			// ENCOLAMOS
+			listaSemaforo.enqueue(new PeticionSemaforo(i,actual,condSemaforo));
+			// PONEMOS EN ESPERA EL PROCESO
+			condSemaforo.await();
+		} 
+		// SI SE CUMPLE LA CPRE--> DESBLOQUEAMOS Y DEVOLVEMOS EL RESULTADO ESPERADO
+		desbloquear();
+		mutex.leave();
+		return encendido;
+	}
+
+	@Override
+	public void avisarPasoPorBaliza(int i) {
+		// SI NO SE CUMPLE LA PRE --> LANZAMOS EXCEPCION
+		if ( i == 0) {
+			throw new PreconditionFailedException();
+		} 
+		// USAMOS EL mutex PARA ASEGURAR LA EXCLUSION MUTUA
+		mutex.enter();
+		//--- CPRE ---- = CIERTO--> POR TANTO, NO EXISTE NINGUN BLOQUEO
+		
+		//-----POST----
+		this.trenes[i-1] = trenes [i-1]-1;
+		this.trenes[i] = trenes[i]+1;
+		coloresCorrectos();
+		desbloquear();
+		mutex.leave();
+	}
+	// CLASE AUXILIAR PARA LAS PETICIONES DE BARRERA, LA CUAL POSEE EL ATRIBUTO BOOLEANO QUE RECIBE EL METODO Y LA CONDICION ASOCIADA
+	private class PeticionBarrera {
+
+		private boolean activo;
+		private Monitor.Cond condition;
+
+		private PeticionBarrera(boolean esperado, Monitor.Cond cond) {
+			this.activo = esperado;
+			this.condition = cond;
+		}
+		private boolean getActivo() {
+			return this.activo;
+		}
+		private Monitor.Cond getCondition(){
+			return this.condition;
+		}
+
+	}
+	// CLASE AUXILIAR PARA LAS PETICIONES DE FRENO, LA CUAL POSEE EL ATRIBUTO BOOLEANO QUE RECIBE EL METODO Y LA CONDICION ASOCIADA
+	private class PeticionFreno {
+
+		private boolean activo;
+		private Monitor.Cond condition;
+
+		private PeticionFreno(boolean esperado, Monitor.Cond cond) {
+			this.activo = esperado;
+			this.condition = cond;
+		}
+		private boolean getActivo() {
+			return this.activo;
+		}
+		private Monitor.Cond getCondition(){
+			return this.condition;
+		}
+
+	}
+	// CLASE AUXILIAR PARA LAS PETICIONES DE SEMAFORO, LA CUAL POSEE EL ATRIBUTO ENTERO Y EL COLOR QUE RECIBE EL METODO Y LA CONDICION ASOCIADA
+	private class PeticionSemaforo {
+
+		private int numeroSemaforo;
+		private Control.Color color;
+		private Monitor.Cond condition;
+
+		private PeticionSemaforo(int id , Control.Color actual, Cond cond) {
+			this.numeroSemaforo = id;
+			this.color = actual;
+			this.condition = cond;
+		}
+		private int getNumeroSemaforo() {
+			return this.numeroSemaforo;
+		}
+		private Control.Color getColor() {
+			return this.color;  
+		}
+		private Monitor.Cond getCondition(){
+			return this.condition;
+		}
+
+	}
+	// METODO AUXILIAR DE DESBLOQUEO PARA LOS PROCESOS EN ESPERA
+	private void desbloquear() {
+		// DECLARAMOS VARIABLE BOOLEANA PARA SABER SI ESTA SENALIZADO
 		boolean senalizado = false;
-		// Almaceno longitudes de mis listas donde almaceno los bloqueos
+		// TAMANO DE MIS COLAS DONDE ALMACENO LAS CONDICIONES PENDIENTES
 		int sizeBarrera = listaBarrera.size();
 		int sizeFreno = listaFreno.size();
 		int sizeSemaforo = listaSemaforo.size();
-		// Recorro dichas listas, para saber si existen elementos en espera
+		// RECORRIDO DE LA COLA DE LAS PETICIONES DE BARRERA
 		for (int i = 0; i < sizeBarrera && !senalizado; i++) {
-			
-			PeticionBarrera petBar = listaBarrera.first(); // Obtenemos primer elemento de la cola
-			listaBarrera.dequeue(); // desencolamos primer elemento
-			
-			// SI SE CUMPLE LA CPRE DE BARRERA--> desbloquea y senaliza
+
+			PeticionBarrera petBar = listaBarrera.first(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
+			listaBarrera.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
+
+			// SI SE CUMPLE LA CPRE DE BARRERA Y EXISTEN PETICIONES EN COLA --> SENALIZA
 			if( petBar.getActivo() != (trenes[1] + trenes[2] == 0) && petBar.getCondition().waiting() > 0) {
 				petBar.getCondition().signal();
 				senalizado = true;
-			// SI NO SE CUMPLE LA CPRE DE BARRERA--> Vuelve a encolar el elemento
+				// SI NO SE CUMPLE LA CPRE DE BARRERA--> VUELVE A ENCOLAR EL ELEMENTO 
 			} else {
 				listaBarrera.enqueue(petBar);
 			}
-		} // Cierre bucle cola Barrera
-			for ( int j = 0 ; j < sizeFreno && !senalizado; j++) { 
-				
-			PeticionFreno petFren = listaFreno.first();
-			listaFreno.dequeue();
-			
-			// SI SE CUMPLE LA CPRE DEL FRENO--> Desbloquea y senaliza
+		} // CIERRE BUCLE COLA BARRERA
+		// RECORRIDO DE LA COLA DE LAS PETICIONES DE FRENO
+		for ( int j = 0 ; j < sizeFreno && !senalizado; j++) { 
+
+			PeticionFreno petFren = listaFreno.first(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
+			listaFreno.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
+
+			// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> SENALIZA
 			if ( petFren.getActivo() != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true)) && petFren.getCondition().waiting() > 0) {
 				petFren.getCondition().signal();
 				senalizado = true;
-			// SI NO SE CUMPLE LA CPRE DE FRENO--> Vuelve a encolar elemento
+				// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 			} else {
 				listaFreno.enqueue(petFren);
 			}
-			}// Cierre bucle cola Freno
-			
-			for( int z = 0; z < sizeSemaforo && !senalizado; z++) {
-				
-				PeticionSemaforo petSem = listaSemaforo.first();
-				listaSemaforo.dequeue();
-				
-			// SI SE CUMPLE LA CPRE PARA SEMAFORO 1--> desbloquea y senaliza
+		}// CIERRE BUCLE COLA DE FRENO
+		// RECORRIDO DE LA COLA DE LAS PETICIONES DE SEMAFORO
+		for( int z = 0; z < sizeSemaforo && !senalizado; z++) {
+
+			PeticionSemaforo petSem = listaSemaforo.first(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
+			listaSemaforo.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
+
+			// SI SE CUMPLE LA CPRE PARA SEMAFORO 1 Y EXISTEN PETICIONES EN COLA --> SENALIZA
 			if ( petSem.getNumeroSemaforo() == 1 && (petSem.getColor() != (coloresBaliza[1])) && petSem.getCondition().waiting() > 0 ) {
 				petSem.getCondition().signal();
 				senalizado = true;
 			} else {
-			// SI NO SE CUMPLE LA CRE DE SEMAFORO 2--> Vuelve a encolar la peticion del semaforo
+				// SI NO SE CUMPLE LA CRE DE SEMAFORO 1--> VUELVE A ENCOLAR EL ELEMENTO
 				listaSemaforo.enqueue(petSem);
 			}
+			// SI SE CUMPLE LA CPRE PARA SEMAFORO 2 Y EXISTEN PETICIONES EN COLA --> SENALIZA
 			if ( (petSem.getNumeroSemaforo() == 2) && (petSem.getColor() != (coloresBaliza[2])) && petSem.getCondition().waiting() > 0 ) {
 				petSem.getCondition().signal();
 				senalizado = true;
 			} else {
-			// SI NO SE CUMPLE LA CRE DE SEMAFORO 3--> Vuelve a encolar la peticion del semaforo
+				// SI NO SE CUMPLE LA CRE DE SEMAFORO 2--> VUELVE A ENCOLAR EL ELEMENTO
 				listaSemaforo.enqueue(petSem);
 			}
-			
-} // Cierre bucle cola Semaforo
-} // Cierre desbloquear
+
+		} // Cierre BUCLE COLA SEMAFORO
+	} // CIERRE METODO AUXILIAR desbloquear
 }
