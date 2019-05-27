@@ -41,9 +41,8 @@ public class EnclavamientoMonitor implements Enclavamiento {
 		   this.coloresBaliza[2] = Control.Color.ROJO; 
 	   } if( trenes[2] == 0 && presencia == false ) {
 		   this.coloresBaliza[2] = Control.Color.VERDE; 
-	   } else {
+	   } 
 		   this.coloresBaliza[3] = Control.Color.VERDE; 
-	   }
   }
   
   public void avisarPresencia(boolean presencia) {
@@ -51,6 +50,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
     //-----POST--------
     this.presencia = presencia;
     coloresCorrectos();
+    desbloquear();
     mutex.leave();
      
   }
@@ -59,7 +59,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  // Analizamos dos casos--> caso actual = true Y caso actual = false
 	  mutex.enter();
 	  //Declaramos variable booleana que devolveremos
-	  boolean esperado = (this.trenes[1] + this.trenes[2]) == 0;
+	  boolean esperado = (this.trenes[1] + this.trenes[2] == 0);
 	  // Si no se cumple la CPRE--> ESPERA
 	  	if ( actual == (this.trenes[1] + this.trenes[2] == 0) ) {
 	  // Creamos condicion de barrera
@@ -74,6 +74,7 @@ public class EnclavamientoMonitor implements Enclavamiento {
 		  desbloquear();	
 		  mutex.leave();
 		  return esperado;
+		  
 	  }
 
   @Override
@@ -95,7 +96,6 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  		// Desbloqueo de condicion
 		  desbloquear();	
 		  mutex.leave();
-		  
 		  return esperado;
   }
 
@@ -107,9 +107,9 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	  }
 	    mutex.enter();
 	    // Declaramos color que devolveremos 
-	    Control.Color encendido;
+	    Control.Color encendido = coloresBaliza[i];
 	    // Si no se cumple la CPRE--> ESPERA
-	    if ( actual.equals(coloresBaliza[i])) {
+	    if ( actual.equals(coloresBaliza[i]) ) {
 	    // Creamos condicion para semaforo 1
 	    	Monitor.Cond condSemaforo = mutex.newCond();
 	    // Metemos a la lista el semaforo
@@ -117,11 +117,8 @@ public class EnclavamientoMonitor implements Enclavamiento {
 	    // Ponemos en espera la condicion
 	    	condSemaforo.await();
 	    } 
-	    	// Cambio valor de encendido al que haya en self.color(i)
-	    	encendido = coloresBaliza[i];
 	    	// Desbloqueo
 	    	desbloquear();
-	    	
 	    	mutex.leave();
 	    	return encendido;
   }
@@ -224,10 +221,10 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			listaFreno.dequeue();
 			
 			// SI SE CUMPLE LA CPRE DEL FRENO--> Desbloquea y senaliza
-			if ( petFren.getActivo() != (trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true) && petFren.getCondition().waiting() > 0) {
+			if ( petFren.getActivo() != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true)) && petFren.getCondition().waiting() > 0) {
 				petFren.getCondition().signal();
 				senalizado = true;
-			// SI NO SE CUMPLE LA CPRE DE FRENO--> Vuelve a encolar elemnto
+			// SI NO SE CUMPLE LA CPRE DE FRENO--> Vuelve a encolar elemento
 			} else {
 				listaFreno.enqueue(petFren);
 			}
@@ -238,14 +235,22 @@ public class EnclavamientoMonitor implements Enclavamiento {
 				PeticionSemaforo petSem = listaSemaforo.first();
 				listaSemaforo.dequeue();
 				
-			// SI SE CUMPLE LA CPRE PARA SEMAFORO--> desbloquea y senaliza
-			if ( (petSem.getColor() != coloresBaliza[z]) && petSem.getCondition().waiting() > 0 ) {
+			// SI SE CUMPLE LA CPRE PARA SEMAFORO 1--> desbloquea y senaliza
+			if ( petSem.getNumeroSemaforo() == 1 && (petSem.getColor() != (coloresBaliza[1])) && petSem.getCondition().waiting() > 0 ) {
 				petSem.getCondition().signal();
 				senalizado = true;
 			} else {
-			// SI NO SE CUMPLE LA CRE DE SEMAFORO--> Vuelve a encolar la peticion del semaforo
+			// SI NO SE CUMPLE LA CRE DE SEMAFORO 2--> Vuelve a encolar la peticion del semaforo
 				listaSemaforo.enqueue(petSem);
 			}
+			if ( (petSem.getNumeroSemaforo() == 2) && (petSem.getColor() != (coloresBaliza[2])) && petSem.getCondition().waiting() > 0 ) {
+				petSem.getCondition().signal();
+				senalizado = true;
+			} else {
+			// SI NO SE CUMPLE LA CRE DE SEMAFORO 3--> Vuelve a encolar la peticion del semaforo
+				listaSemaforo.enqueue(petSem);
+			}
+			
 } // Cierre bucle cola Semaforo
 } // Cierre desbloquear
 }
