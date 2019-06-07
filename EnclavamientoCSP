@@ -162,11 +162,12 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 
 			case AVISAR_PRESENCIA:
 				// LEEMOS PETICION DEL CANAL
-				Boolean quePresencia = (Boolean) chAvisarPresencia.in().read();
+				Boolean quePresencia =  (Boolean) chAvisarPresencia.in().read();
 				// ACTUALIZAMOS ESTADO DEL RECURSO
-				presencia = quePresencia;
+				presencia =  quePresencia;
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
+				
 				break;
 
 			case LEER_CAMBIO_BARRERA:
@@ -189,12 +190,11 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				Integer queBaliza = (Integer) chAvisarPasoPorBaliza.in().read();
 				// ACTUALIZO EL ESTADO DEL RECURSO
 				
-				trenes[queBaliza-1] = trenes [queBaliza-1]-1;
+				trenes[queBaliza-1] = trenes[queBaliza-1]-1;
 				trenes[queBaliza] = trenes[queBaliza]+1;
 				
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
-				break;
 			} // CIERRE swith
 			
 			//BLOQUEO Y DESBLOQUEO DE LAS PETICIONES
@@ -204,7 +204,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				// SI SE CUMPLE LA CPRE DE BARRERA
 				if( petBar.value != (trenes[1] + trenes[2] == 0)) {
 					// POST
-					petBar.channel.out().write((Boolean) (trenes[1] + trenes[2] == 0));
+					petBar.channel.out().write((Boolean)(trenes[1] + trenes[2] == 0));
 				} else {
 					
 					listaBarrera.add(petBar);
@@ -218,7 +218,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
 				if ( petFren.value != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true))) {
 					// POST
-					petFren.channel.out().write((Boolean) (trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true));
+					petFren.channel.out().write((Boolean)(trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true));
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else { 
 					
@@ -230,18 +230,12 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			for ( int z = 0 ; z < listaSemaforo.size() ; z++ ) {
 				PeticionLeerCambioSemaforo petSem = listaSemaforo.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
 				
-				// SI SE CUMPLE LA CPRE PARA SEMAFORO 1 Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
-				if ( petSem.index == 1 && !(petSem.color).equals(coloresBaliza[1])) {
-					// POST
-					petSem.channel.out().write((Control.Color) coloresBaliza[1]);
-					
+				// SI SE CUMPLE LA CPRE PARA SEMAFORO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
+				if(petSem.index == 1 && petSem.color != coloresBaliza[1] || petSem.index == 2 && petSem.color != coloresBaliza[2]
+						|| petSem.index == 3 && petSem.color != coloresBaliza[3]) {
+					petSem.channel.out().write((Control.Color) coloresBaliza[petSem.index]);
 				}
-				// SI SE CUMPLE LA CPRE PARA SEMAFORO 2 Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
-				if ( (petSem.index == 2) && !(petSem.color).equals(coloresBaliza[2])) {
-					//POST
-					petSem.channel.out().write((Control.Color) coloresBaliza[2]);
-					
-				} else { 
+				else { 
 					
 				listaSemaforo.add(petSem);
 				
