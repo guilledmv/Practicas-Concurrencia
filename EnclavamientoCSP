@@ -1,12 +1,12 @@
 //package Practica1;
+import java.util.LinkedList;
+import java.util.Queue;
+
 import org.jcsp.lang.Alternative;
 
 import org.jcsp.lang.Any2OneChannel;
 import org.jcsp.lang.CSProcess;
 import org.jcsp.lang.ProcessManager;
-
-import es.upm.aedlib.fifo.FIFO;
-import es.upm.aedlib.fifo.FIFOList;
 
 import org.jcsp.lang.Channel;
 import org.jcsp.lang.Guard;
@@ -21,13 +21,18 @@ import org.jcsp.lang.One2OneChannel;
 public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 
 	// CANALES PARA RECIBIR EL ESTADO DEL RECURSO--> 1 CANAL POR METODO
-	private final Any2OneChannel chAvisarPresencia     = Channel.any2one();
-	private final Any2OneChannel chLeerCambioBarrera   = Channel.any2one();
-	private final Any2OneChannel chLeerCambioFreno     = Channel.any2one();
-	private final Any2OneChannel chLeerCambioSemaforo  = Channel.any2one();
-	private final Any2OneChannel chAvisarPasoPorBaliza = Channel.any2one();  
+	private final Any2OneChannel chAvisarPresencia;
+	private final Any2OneChannel chLeerCambioBarrera;
+	private final Any2OneChannel chLeerCambioFreno;
+	private final Any2OneChannel chLeerCambioSemaforo;
+	private final Any2OneChannel chAvisarPasoPorBaliza;
 
 	public EnclavamientoCSP() {
+		this.chAvisarPresencia = Channel.any2one();
+		this.chLeerCambioBarrera = Channel.any2one();
+		this.chLeerCambioFreno = Channel.any2one();
+		this.chLeerCambioSemaforo = Channel.any2one();
+		this.chAvisarPasoPorBaliza = Channel.any2one();
 		new ProcessManager(this).start();
 	}
 
@@ -41,7 +46,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			this.value = value;
 		}
 	}
-
+	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
 	public static class PeticionLeerCambioFreno{
 		protected One2OneChannel channel;
 		protected boolean value;
@@ -51,7 +56,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			this.value = value;
 		}
 	}
-
+	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
 	public static class PeticionLeerCambioSemaforo{
 		protected One2OneChannel channel;
 		protected Control.Color color;
@@ -89,7 +94,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 	/** notice that exceptions can be thrown outside the server */
 	@Override
 	public Control.Color leerCambioSemaforo(int i, Control.Color color) {
-		if (i == 0 )
+		if (i == 0 ) 
 			throw new PreconditionFailedException("Semaforo 0 no existe");
 
 		One2OneChannel ch = Channel.one2one();
@@ -113,9 +118,8 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 	static final int LEER_CAMBIO_SEMAFORO  = 3;
 	static final int AVISAR_PASO_POR_BALIZA = 4;
 
-	@Override
 	public void run() {
-		// VARIABLES GLOBALES PARA CONTROLAR EL ENCLAVAMIENTO
+		// VARIABLES LOCALES PARA CONTROLAR EL ENCLAVAMIENTO
 
 		boolean presencia; // DECLARAMOS EL ATRIBUTO PRESENCIA, PARA DETECTAR PRESENCIA EN EL CRUCE
 		int [] trenes; 	// DECLARAMOS ARRAY DE TRENES PARA CONTROLAR EL PASO POR LAS BALIZAS
@@ -123,9 +127,9 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 
 		//DECLARAMOS ESTRUCTURAS AUXILIARES PARA ALMACENAR LAS PETICIONES APLAZADAS EN EL SERVIDOR
 
-		FIFO<PeticionLeerCambioBarrera> listaBarrera; // DECLARAMOS TRES COLAS PARA ALMACENAR LAS PETICIONES DE BARRERA, FRENO Y SEMAFORO
-		FIFO<PeticionLeerCambioFreno> listaFreno;
-		FIFO<PeticionLeerCambioSemaforo> listaSemaforo;
+		Queue<PeticionLeerCambioBarrera> listaBarrera; // DECLARAMOS TRES COLAS PARA ALMACENAR LAS PETICIONES DE BARRERA, FRENO Y SEMAFORO
+		Queue<PeticionLeerCambioFreno> listaFreno;
+		Queue<PeticionLeerCambioSemaforo> listaSemaforo;
 
 
 		// INICIALIZAMOS EL ESTADO DE NUESTROS RECURSOS
@@ -134,9 +138,9 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		coloresBaliza = new Control.Color [] {Control.Color.VERDE,Control.Color.VERDE,Control.Color.VERDE,Control.Color.VERDE};
 		
 		// INICIALIZAMOS NUESTRAS COLAS DE PETICIONES
-		listaBarrera = new FIFOList<PeticionLeerCambioBarrera>();
-		listaFreno = new FIFOList<PeticionLeerCambioFreno>();
-		listaSemaforo = new FIFOList<PeticionLeerCambioSemaforo>();
+		listaBarrera = new LinkedList<PeticionLeerCambioBarrera>();
+		listaFreno = new LinkedList<PeticionLeerCambioFreno>();
+		listaSemaforo = new LinkedList<PeticionLeerCambioSemaforo>();
 
 		// CONSTRUIMOS RECEPCION ALTERNATIVA
 		Guard[] inputs = {
@@ -148,11 +152,11 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		};
 
 		Alternative services = new Alternative(inputs);
+		int chosenService = 0;
 
 		// BUCLE DE SERVICIO
-		while (true){
-
-			int chosenService = services.fairSelect();
+		while (true) {
+			chosenService = services.fairSelect();
 
 			switch (chosenService) {
 
@@ -161,110 +165,104 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				Boolean quePresencia = (Boolean) chAvisarPresencia.in().read();
 				// ACTUALIZAMOS ESTADO DEL RECURSO
 				presencia = quePresencia;
+				// INVOCA COLORES CORRECTOS
+				coloresCorrectos(trenes,coloresBaliza,presencia);
 				break;
 
 			case LEER_CAMBIO_BARRERA:
-				// LEEMOS PETICION DEL CANAL
-				chLeerCambioBarrera.in().read();
-				// GUARDAR PETICION TAL CUAL
-				listaBarrera.enqueue((PeticionLeerCambioBarrera) chLeerCambioBarrera.in().read());
+				// LEEMOS Y GUARDARMOS PETICION TAL CUAL		
+				listaBarrera.add((PeticionLeerCambioBarrera) chLeerCambioBarrera.in().read());
 				break;
 
 			case LEER_CAMBIO_FRENO:
-				// LEEMOS PETICION DEL CANAL
-				chLeerCambioFreno.in().read();
-				// GUARDO LA PETICION TAL CUAL
-				listaFreno.enqueue((PeticionLeerCambioFreno) chLeerCambioFreno.in().read());
+				// LEEMOS Y GUARDARMOS PETICION TAL CUAL		
+				listaFreno.add((PeticionLeerCambioFreno) chLeerCambioFreno.in().read());
 				break;
 
 			case LEER_CAMBIO_SEMAFORO:
-				// LEEMOS PETICION DEL CANAL
-				chLeerCambioSemaforo.in().read();
-				// GUARDO LA PETICION TAL CUAL
-				listaSemaforo.enqueue((PeticionLeerCambioSemaforo) chLeerCambioSemaforo.in().read());
+				// LEEMOS Y GUARDAMOS PETICION ACTUAL
+				listaSemaforo.add((PeticionLeerCambioSemaforo) chLeerCambioSemaforo.in().read());
 				break;
 
 			case AVISAR_PASO_POR_BALIZA:
 				// LEEMOS PETICION DEL CANAL
 				Integer queBaliza = (Integer) chAvisarPasoPorBaliza.in().read();
 				// ACTUALIZO EL ESTADO DEL RECURSO
+				
 				trenes[queBaliza-1] = trenes [queBaliza-1]-1;
 				trenes[queBaliza] = trenes[queBaliza]+1;
+				
+				// INVOCA COLORES CORRECTOS
+				coloresCorrectos(trenes,coloresBaliza,presencia);
 				break;
 			} // CIERRE swith
 			
-			// IMPLEMENTA LOS COLORES CORRECTOS
-			if( trenes[1] > 0 ) {
-				coloresBaliza[1] = Control.Color.ROJO; 
-			} if( trenes[1] == 0 && ( trenes[2] > 0 || presencia == true )) {
-				coloresBaliza[1] = Control.Color.AMARILLO; 	   
-			} if( trenes[1] == 0 && trenes[2] == 0 && presencia == false ) {
-				coloresBaliza[1] = Control.Color.VERDE; 
-			} if( trenes[2] > 0 || presencia == true ) {
-				coloresBaliza[2] = Control.Color.ROJO; 
-			} if( trenes[2] == 0 && presencia == false ) {
-				coloresBaliza[2] = Control.Color.VERDE; 
-			} 
-			coloresBaliza[3] = Control.Color.VERDE; 
-			
 			//BLOQUEO Y DESBLOQUEO DE LAS PETICIONES
-			// TAMANO DE MIS COLAS DONDE ALMACENO LAS PETICIONES PENDIENTES
-			
-			int sizeBarrera = listaBarrera.size();
-			int sizeFreno = listaFreno.size();
-			int sizeSemaforo = listaSemaforo.size();
-			
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE BARRERA
-			for (int i = 0; i < sizeBarrera; i++) {
-
-				PeticionLeerCambioBarrera petBar = listaBarrera.first(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-				listaBarrera.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
-
-				// SI SE CUMPLE LA CPRE DE BARRERA Y EXISTEN PETICIONES EN COLA --> SENALIZA
+			for( int i = 0; i < listaBarrera.size() ; i++) {
+				PeticionLeerCambioBarrera petBar = listaBarrera.poll();				
+				// SI SE CUMPLE LA CPRE DE BARRERA
 				if( petBar.value != (trenes[1] + trenes[2] == 0)) {
-					petBar.channel.out().write(petBar.value);
-					// SI NO SE CUMPLE LA CPRE DE BARRERA--> VUELVE A ENCOLAR EL ELEMENTO 
+					// POST
+					petBar.channel.out().write((Boolean) (trenes[1] + trenes[2] == 0));
 				} else {
-					listaBarrera.enqueue(petBar);
+					
+					listaBarrera.add(petBar);
+					
 				}
 			} // CIERRE BUCLE COLA BARRERA
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE FRENO
-			for ( int j = 0 ; j < sizeFreno; j++) { 
-
-				PeticionLeerCambioFreno petFren = listaFreno.first(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-				listaFreno.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
-
-				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> SENALIZA
+			for ( int j = 0; j < listaFreno.size() ; j++ ) { 
+				PeticionLeerCambioFreno petFren = listaFreno.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
+				
+				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
 				if ( petFren.value != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true))) {
-					petFren.channel.out().write(petFren.value);
+					// POST
+					petFren.channel.out().write((Boolean) (trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true));
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
-				} else {
-					listaFreno.enqueue(petFren);
+				} else { 
+					
+				listaFreno.add(petFren);
+				
 				}
-			}// CIERRE BUCLE COLA DE FRENO
+			} // CIERRE BUCLE COLA DE FRENO
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE SEMAFORO
-			for( int z = 0; z < sizeSemaforo; z++) {
-
-				PeticionLeerCambioSemaforo petSem = listaSemaforo.first(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-				listaSemaforo.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
-
-				// SI SE CUMPLE LA CPRE PARA SEMAFORO 1 Y EXISTEN PETICIONES EN COLA --> SENALIZA
-				if ( petSem.index == 1 && (petSem.color) != (coloresBaliza[1])) {
-					petSem.channel.out().write(petSem.color);
-				} else {
-					// SI NO SE CUMPLE LA CRE DE SEMAFORO 1--> VUELVE A ENCOLAR EL ELEMENTO
-					listaSemaforo.enqueue(petSem);
+			for ( int z = 0 ; z < listaSemaforo.size() ; z++ ) {
+				PeticionLeerCambioSemaforo petSem = listaSemaforo.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
+				
+				// SI SE CUMPLE LA CPRE PARA SEMAFORO 1 Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
+				if ( petSem.index == 1 && !(petSem.color).equals(coloresBaliza[1])) {
+					// POST
+					petSem.channel.out().write((Control.Color) coloresBaliza[1]);
+					
 				}
-				// SI SE CUMPLE LA CPRE PARA SEMAFORO 2 Y EXISTEN PETICIONES EN COLA --> SENALIZA
-				if ( (petSem.index == 2) && (petSem.color != (coloresBaliza[2]))) {
-					petSem.channel.out().write(petSem.color);
-				} else {
-					// SI NO SE CUMPLE LA CRE DE SEMAFORO 2--> VUELVE A ENCOLAR EL ELEMENTO
-					listaSemaforo.enqueue(petSem);
+				// SI SE CUMPLE LA CPRE PARA SEMAFORO 2 Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
+				if ( (petSem.index == 2) && !(petSem.color).equals(coloresBaliza[2])) {
+					//POST
+					petSem.channel.out().write((Control.Color) coloresBaliza[2]);
+					
+				} else { 
+					
+				listaSemaforo.add(petSem);
+				
 				}
-
-			} // Cierre BUCLE COLA SEMAFORO
-		} // CIERRE BUCLE SERVICIOS
+			}// CIERRE BUCLE COLA SEMAFORO
+		} // CIERRE BUCLE SERVIDOR
 	} // CIERRE run()
-
+	//METODO AUXILIAR DE ColoresCorrectos
+	private void coloresCorrectos(int [] arr, Control.Color colores[], boolean prueba ) {
+		// IMPLEMENTACION COLORES CORRECTOS
+		if( arr[1] > 0 ) {
+			colores[1] = Control.Color.ROJO; 
+		} if( arr[1] == 0 && ( arr[2] > 0 || prueba == true )) {
+			colores[1] = Control.Color.AMARILLO; 	   
+		} if( arr[1] == 0 && arr[2] == 0 && prueba == false ) {
+			colores[1] = Control.Color.VERDE; 
+		} if( arr[2] > 0 || prueba == true ) {
+			colores[2] = Control.Color.ROJO; 
+		} if( arr[2] == 0 && prueba == false ) {
+			colores[2] = Control.Color.VERDE; 
+		} 
+		colores[3] = Control.Color.VERDE; 
+	}
 } // end CLASS
