@@ -137,11 +137,11 @@ public class EnclavamientoMonitor implements Enclavamiento {
 		// SI NO SE CUMPLE LA PRE --> LANZAMOS EXCEPCION
 		if ( i == 0) {
 			throw new PreconditionFailedException();
-		} 
+		}
 		// USAMOS EL mutex PARA ASEGURAR LA EXCLUSION MUTUA
 		mutex.enter();
 		//--- CPRE ---- = CIERTO--> POR TANTO, NO EXISTE NINGUN BLOQUEO
-		
+
 		//-----POST----
 		this.trenes[i-1] = trenes [i-1]-1;
 		this.trenes[i] = trenes[i]+1;
@@ -159,13 +159,6 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			this.activo = esperado;
 			this.condition = cond;
 		}
-		private boolean getActivo() {
-			return this.activo;
-		}
-		private Monitor.Cond getCondition(){
-			return this.condition;
-		}
-
 	}
 	// CLASE AUXILIAR PARA LAS PETICIONES DE FRENO, LA CUAL POSEE EL ATRIBUTO BOOLEANO QUE RECIBE EL METODO Y LA CONDICION ASOCIADA
 	private class PeticionFreno {
@@ -177,13 +170,6 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			this.activo = esperado;
 			this.condition = cond;
 		}
-		private boolean getActivo() {
-			return this.activo;
-		}
-		private Monitor.Cond getCondition(){
-			return this.condition;
-		}
-
 	}
 	// CLASE AUXILIAR PARA LAS PETICIONES DE SEMAFORO, LA CUAL POSEE EL ATRIBUTO ENTERO Y EL COLOR QUE RECIBE EL METODO Y LA CONDICION ASOCIADA
 	private class PeticionSemaforo {
@@ -197,22 +183,12 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			this.color = actual;
 			this.condition = cond;
 		}
-		private int getNumeroSemaforo() {
-			return this.numeroSemaforo;
-		}
-		private Control.Color getColor() {
-			return this.color;  
-		}
-		private Monitor.Cond getCondition(){
-			return this.condition;
-		}
-
 	}
 	// METODO AUXILIAR DE DESBLOQUEO PARA LOS PROCESOS EN ESPERA
 	private void desbloquear() {
 		// DECLARAMOS VARIABLE BOOLEANA PARA SABER SI ESTA SENALIZADO
 		boolean senalizado = false;
-		// TAMANO DE MIS COLAS DONDE ALMACENO LAS CONDICIONES PENDIENTES
+		//DECLARAMOS TAMANO DE LAS COLAS
 		int sizeBarrera = listaBarrera.size();
 		int sizeFreno = listaFreno.size();
 		int sizeSemaforo = listaSemaforo.size();
@@ -223,8 +199,8 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			listaBarrera.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
 
 			// SI SE CUMPLE LA CPRE DE BARRERA Y EXISTEN PETICIONES EN COLA --> SENALIZA
-			if( petBar.getActivo() != (trenes[1] + trenes[2] == 0) && petBar.getCondition().waiting() > 0) {
-				petBar.getCondition().signal();
+			if( petBar.activo != (trenes[1] + trenes[2] == 0) && petBar.condition.waiting() > 0) {
+				petBar.condition.signal();
 				senalizado = true;
 				// SI NO SE CUMPLE LA CPRE DE BARRERA--> VUELVE A ENCOLAR EL ELEMENTO 
 			} else {
@@ -238,8 +214,8 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			listaFreno.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
 
 			// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> SENALIZA
-			if ( petFren.getActivo() != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true)) && petFren.getCondition().waiting() > 0) {
-				petFren.getCondition().signal();
+			if ( petFren.activo != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true)) && petFren.condition.waiting() > 0) {
+				petFren.condition.signal();
 				senalizado = true;
 				// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 			} else {
@@ -253,16 +229,16 @@ public class EnclavamientoMonitor implements Enclavamiento {
 			listaSemaforo.dequeue(); // DESENCOLAMOS PRIMER ELEMENTO
 
 			// SI SE CUMPLE LA CPRE PARA SEMAFORO 1 Y EXISTEN PETICIONES EN COLA --> SENALIZA
-			if ( petSem.getNumeroSemaforo() == 1 && (petSem.getColor() != (coloresBaliza[1])) && petSem.getCondition().waiting() > 0 ) {
-				petSem.getCondition().signal();
+			if ( petSem.numeroSemaforo == 1 && (petSem.color != (coloresBaliza[1])) && petSem.condition.waiting() > 0 ) {
+				petSem.condition.signal();
 				senalizado = true;
 			} else {
 				// SI NO SE CUMPLE LA CRE DE SEMAFORO 1--> VUELVE A ENCOLAR EL ELEMENTO
 				listaSemaforo.enqueue(petSem);
 			}
 			// SI SE CUMPLE LA CPRE PARA SEMAFORO 2 Y EXISTEN PETICIONES EN COLA --> SENALIZA
-			if ( (petSem.getNumeroSemaforo() == 2) && (petSem.getColor() != (coloresBaliza[2])) && petSem.getCondition().waiting() > 0 ) {
-				petSem.getCondition().signal();
+			if ( (petSem.numeroSemaforo == 2) && (petSem.color != (coloresBaliza[2])) && petSem.condition.waiting() > 0 ) {
+				petSem.condition.signal();
 				senalizado = true;
 			} else {
 				// SI NO SE CUMPLE LA CRE DE SEMAFORO 2--> VUELVE A ENCOLAR EL ELEMENTO
