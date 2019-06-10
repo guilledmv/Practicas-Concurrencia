@@ -35,7 +35,17 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		this.chAvisarPasoPorBaliza = Channel.any2one();
 		new ProcessManager(this).start();
 	}
+	
+	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
+	public static class PeticionAvisarPresencia {
+		protected One2OneChannel channel;
+		protected boolean value;
 
+		public PeticionAvisarPresencia (One2OneChannel channel, boolean value) {
+			this.channel = channel;
+			this.value = value;
+		}
+	}
 	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
 	public static class PeticionLeerCambioBarrera{
 		protected One2OneChannel channel;
@@ -70,29 +80,39 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			this.index = index;
 		}
 	}
+	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
+	public static class PeticionAvisarPasoPorBaliza {
+		protected One2OneChannel channel;
+		protected int value;
 
+		public PeticionAvisarPasoPorBaliza (One2OneChannel channel, int value) {
+			this.channel = channel;
+			this.value = value;
+		}
+	}
+	
 	// IMPLEMENTACION ENCLAVAMIENTO
-	@Override
+
 	public void avisarPresencia(boolean presencia) {
-		chAvisarPresencia.out().write(presencia);
+		One2OneChannel ch = Channel.one2one();
+		chAvisarPresencia.out().write(new PeticionAvisarPresencia(ch,presencia));
 	}
 
-	@Override
+
 	public boolean leerCambioBarrera(boolean abierta) {
 		One2OneChannel ch = Channel.one2one();
 		chLeerCambioBarrera.out().write(new PeticionLeerCambioBarrera(ch, abierta));
 		return (Boolean) ch.in().read();
 	}
 
-	@Override
+	
 	public boolean leerCambioFreno(boolean accionado) {
 		One2OneChannel ch = Channel.one2one();
 		chLeerCambioFreno.out().write(new PeticionLeerCambioFreno(ch, accionado));
 		return (Boolean) ch.in().read();
 	}
 
-	/** notice that exceptions can be thrown outside the server */
-	@Override
+	
 	public Control.Color leerCambioSemaforo(int i, Control.Color color) {
 		if (i == 0 ) 
 			throw new PreconditionFailedException("Semaforo 0 no existe");
@@ -102,12 +122,12 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		return (Control.Color) ch.in().read();
 	}
 
-	@Override
 	public void avisarPasoPorBaliza(int i) {
-		if (i == 0 )
+		if (i == 0)
 			throw new PreconditionFailedException("Baliza 0 no existe");
 		
-		chAvisarPasoPorBaliza.out().write(i);
+		One2OneChannel ch = Channel.one2one();
+		chAvisarPasoPorBaliza.out().write(new PeticionAvisarPasoPorBaliza(ch,i));
 	}
 
 
@@ -152,19 +172,17 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		};
 
 		Alternative services = new Alternative(inputs);
-		int chosenService = 0;
 
 		// BUCLE DE SERVICIO
 		while (true) {
-			chosenService = services.fairSelect();
 
-			switch (chosenService) {
+			switch (services.fairSelect()) {
 
 			case AVISAR_PRESENCIA:
 				// LEEMOS PETICION DEL CANAL
-				Boolean quePresencia =  (Boolean) chAvisarPresencia.in().read();
+				PeticionAvisarPresencia petPresencia = (PeticionAvisarPresencia) chAvisarPresencia.in().read();
 				// ACTUALIZAMOS ESTADO DEL RECURSO
-				presencia =  quePresencia;
+				presencia = (Boolean) petPresencia.value;
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
 				
@@ -187,24 +205,28 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 
 			case AVISAR_PASO_POR_BALIZA:
 				// LEEMOS PETICION DEL CANAL
-				Integer queBaliza = (Integer) chAvisarPasoPorBaliza.in().read();
+				PeticionAvisarPasoPorBaliza petBaliza =  (PeticionAvisarPasoPorBaliza) chAvisarPasoPorBaliza.in().read();
 				// ACTUALIZO EL ESTADO DEL RECURSO
-				
-				trenes[queBaliza-1] = trenes[queBaliza-1]-1;
-				trenes[queBaliza] = trenes[queBaliza]+1;
+				trenes[(Integer)petBaliza.value-1] = trenes[(Integer)petBaliza.value-1]-1;
+				trenes[(Integer)petBaliza.value] = trenes[(Integer)petBaliza.value]+1;
 				
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
+				
+				break;
+				
 			} // CIERRE swith
 			
 			//BLOQUEO Y DESBLOQUEO DE LAS PETICIONES
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE BARRERA
-			for( int i = 0; i < listaBarrera.size() ; i++) {
+			for( int i = 0 ; i < listaBarrera.size() ; i++) {
 				PeticionLeerCambioBarrera petBar = listaBarrera.poll();				
 				// SI SE CUMPLE LA CPRE DE BARRERA
 				if( petBar.value != (trenes[1] + trenes[2] == 0)) {
 					// POST
 					petBar.channel.out().write((Boolean)(trenes[1] + trenes[2] == 0));
+					
+					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else {
 					
 					listaBarrera.add(petBar);
@@ -212,13 +234,14 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				}
 			} // CIERRE BUCLE COLA BARRERA
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE FRENO
-			for ( int j = 0; j < listaFreno.size() ; j++ ) { 
+			for ( int j = 0 ; j < listaFreno.size() ; j++ ) { 
 				PeticionLeerCambioFreno petFren = listaFreno.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
 				
 				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
 				if ( petFren.value != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true))) {
 					// POST
-					petFren.channel.out().write((Boolean)(trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true));
+					petFren.channel.out().write((Boolean)((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && presencia == true));
+					
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else { 
 					
@@ -240,11 +263,11 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				listaSemaforo.add(petSem);
 				
 				}
-			}// CIERRE BUCLE COLA SEMAFORO
+			} // CIERRE BUCLE COLA SEMAFORO
 		} // CIERRE BUCLE SERVIDOR
 	} // CIERRE run()
 	//METODO AUXILIAR DE ColoresCorrectos
-	private void coloresCorrectos(int [] arr, Control.Color colores[], boolean prueba ) {
+	private static void coloresCorrectos(int [] arr, Control.Color colores[], boolean prueba ) {
 		// IMPLEMENTACION COLORES CORRECTOS
 		if( arr[1] > 0 ) {
 			colores[1] = Control.Color.ROJO; 
