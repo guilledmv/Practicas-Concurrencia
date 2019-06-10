@@ -35,7 +35,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		this.chAvisarPasoPorBaliza = Channel.any2one();
 		new ProcessManager(this).start();
 	}
-	
+
 	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
 	public static class PeticionAvisarPresencia {
 		protected One2OneChannel channel;
@@ -90,7 +90,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			this.value = value;
 		}
 	}
-	
+
 	// IMPLEMENTACION ENCLAVAMIENTO
 
 	public void avisarPresencia(boolean presencia) {
@@ -105,14 +105,12 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		return (Boolean) ch.in().read();
 	}
 
-	
 	public boolean leerCambioFreno(boolean accionado) {
 		One2OneChannel ch = Channel.one2one();
 		chLeerCambioFreno.out().write(new PeticionLeerCambioFreno(ch, accionado));
 		return (Boolean) ch.in().read();
 	}
 
-	
 	public Control.Color leerCambioSemaforo(int i, Control.Color color) {
 		if (i == 0 ) 
 			throw new PreconditionFailedException("Semaforo 0 no existe");
@@ -125,11 +123,10 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 	public void avisarPasoPorBaliza(int i) {
 		if (i == 0)
 			throw new PreconditionFailedException("Baliza 0 no existe");
-		
+
 		One2OneChannel ch = Channel.one2one();
 		chAvisarPasoPorBaliza.out().write(new PeticionAvisarPasoPorBaliza(ch,i));
 	}
-
 
 	// NOMBRES PARA LOS INDICES DE SERVICIOS
 	static final int AVISAR_PRESENCIA = 0;
@@ -156,7 +153,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		presencia = false;
 		trenes = new int [] {0,0,0,0};
 		coloresBaliza = new Control.Color [] {Control.Color.VERDE,Control.Color.VERDE,Control.Color.VERDE,Control.Color.VERDE};
-		
+
 		// INICIALIZAMOS NUESTRAS COLAS DE PETICIONES
 		listaBarrera = new LinkedList<PeticionLeerCambioBarrera>();
 		listaFreno = new LinkedList<PeticionLeerCambioFreno>();
@@ -178,45 +175,64 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 
 			switch (services.fairSelect()) {
 
-			case AVISAR_PRESENCIA:
+			case AVISAR_PRESENCIA: {
 				// LEEMOS PETICION DEL CANAL
 				PeticionAvisarPresencia petPresencia = (PeticionAvisarPresencia) chAvisarPresencia.in().read();
 				// ACTUALIZAMOS ESTADO DEL RECURSO
-				presencia = (Boolean) petPresencia.value;
+				presencia = petPresencia.value;
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
-				
 				break;
-
-			case LEER_CAMBIO_BARRERA:
-				// LEEMOS Y GUARDARMOS PETICION TAL CUAL		
-				listaBarrera.add((PeticionLeerCambioBarrera) chLeerCambioBarrera.in().read());
+			}
+			case LEER_CAMBIO_BARRERA: {
+				// LEEMOS PETICION
+				PeticionLeerCambioBarrera petBar = (PeticionLeerCambioBarrera) chLeerCambioBarrera.in().read();
+				// SI NO SE CUMPLE LA CPRE--> ENCOLAMOS
+				if(petBar.value == (trenes[1] + trenes[2] == 0)) {
+					listaBarrera.add(petBar);
+					// SI SE CUMPLE, GUARDAMOS VALOR EN DICHO CANAL
+				} else {
+					petBar.channel.out().write((trenes[1] + trenes[2] == 0));
+				}
 				break;
-
-			case LEER_CAMBIO_FRENO:
-				// LEEMOS Y GUARDARMOS PETICION TAL CUAL		
-				listaFreno.add((PeticionLeerCambioFreno) chLeerCambioFreno.in().read());
+			}
+			case LEER_CAMBIO_FRENO: {
+				// LEEMOS PETICION
+				PeticionLeerCambioFreno petFren = (PeticionLeerCambioFreno) chLeerCambioFreno.in().read();
+				// SI NO SE CUMPLE LA CPRE--> ENCOLAMOS
+				if(petFren.value == (trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true)) {
+					listaFreno.add(petFren);
+					// SI SE CUMPLE, GUARDAMOS VALOR EN DICHO CANAL
+				} else {
+					petFren.channel.out().write((trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true));
+				}
 				break;
-
-			case LEER_CAMBIO_SEMAFORO:
-				// LEEMOS Y GUARDAMOS PETICION ACTUAL
-				listaSemaforo.add((PeticionLeerCambioSemaforo) chLeerCambioSemaforo.in().read());
+			}
+			case LEER_CAMBIO_SEMAFORO: {
+				// LEEMOS PETICION
+				PeticionLeerCambioSemaforo petSem = (PeticionLeerCambioSemaforo) chLeerCambioSemaforo.in().read();
+				// SI NO SE CUMPLE LA CPRE--> ENCOLAMOS
+				if (petSem.color == coloresBaliza[petSem.index]) {
+					listaSemaforo.add(petSem);
+					// SI SE CUMPLE, GUARDAMOS VALOR EN DICHO CANAL
+				} else {
+					petSem.channel.out().write(coloresBaliza[petSem.index]);
+				}
 				break;
-
-			case AVISAR_PASO_POR_BALIZA:
+			}
+			case AVISAR_PASO_POR_BALIZA: {
 				// LEEMOS PETICION DEL CANAL
 				PeticionAvisarPasoPorBaliza petBaliza =  (PeticionAvisarPasoPorBaliza) chAvisarPasoPorBaliza.in().read();
 				// ACTUALIZO EL ESTADO DEL RECURSO
-				trenes[(Integer)petBaliza.value-1] = trenes[(Integer)petBaliza.value-1]-1;
-				trenes[(Integer)petBaliza.value] = trenes[(Integer)petBaliza.value]+1;
-				
+				trenes[petBaliza.value-1] = trenes[petBaliza.value-1] - 1;
+				trenes[petBaliza.value] = trenes[petBaliza.value] + 1;
+
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
-				
 				break;
-				
+			}
 			} // CIERRE swith
-			
+
 			//BLOQUEO Y DESBLOQUEO DE LAS PETICIONES
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE BARRERA
 			for( int i = 0 ; i < listaBarrera.size() ; i++) {
@@ -225,43 +241,43 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				if( petBar.value != (trenes[1] + trenes[2] == 0)) {
 					// POST
 					petBar.channel.out().write((Boolean)(trenes[1] + trenes[2] == 0));
-					
+
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else {
-					
+
 					listaBarrera.add(petBar);
-					
+
 				}
 			} // CIERRE BUCLE COLA BARRERA
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE FRENO
 			for ( int j = 0 ; j < listaFreno.size() ; j++ ) { 
 				PeticionLeerCambioFreno petFren = listaFreno.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-				
+
 				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
 				if ( petFren.value != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true))) {
 					// POST
 					petFren.channel.out().write((Boolean)((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && presencia == true));
-					
+
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else { 
-					
-				listaFreno.add(petFren);
-				
+
+					listaFreno.add(petFren);
+
 				}
 			} // CIERRE BUCLE COLA DE FRENO
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE SEMAFORO
 			for ( int z = 0 ; z < listaSemaforo.size() ; z++ ) {
 				PeticionLeerCambioSemaforo petSem = listaSemaforo.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-				
+
 				// SI SE CUMPLE LA CPRE PARA SEMAFORO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
-				if(petSem.index == 1 && petSem.color != coloresBaliza[1] || petSem.index == 2 && petSem.color != coloresBaliza[2]
-						|| petSem.index == 3 && petSem.color != coloresBaliza[3]) {
+				if(petSem.index == 1 && petSem.color != coloresBaliza[petSem.index] || petSem.index == 2 && petSem.color != coloresBaliza[petSem.index]
+						|| petSem.index == 3 && petSem.color != coloresBaliza[petSem.index]) {
 					petSem.channel.out().write((Control.Color) coloresBaliza[petSem.index]);
 				}
 				else { 
-					
-				listaSemaforo.add(petSem);
-				
+
+					listaSemaforo.add(petSem);
+
 				}
 			} // CIERRE BUCLE COLA SEMAFORO
 		} // CIERRE BUCLE SERVIDOR
@@ -271,15 +287,16 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		// IMPLEMENTACION COLORES CORRECTOS
 		if( arr[1] > 0 ) {
 			colores[1] = Control.Color.ROJO; 
-		} if( arr[1] == 0 && ( arr[2] > 0 || prueba == true )) {
+		} if( arr[1] == 0 && ( arr[2] > 0 || prueba )) {
 			colores[1] = Control.Color.AMARILLO; 	   
-		} if( arr[1] == 0 && arr[2] == 0 && prueba == false ) {
+		} if( arr[1] == 0 && arr[2] == 0 && !prueba ) {
 			colores[1] = Control.Color.VERDE; 
-		} if( arr[2] > 0 || prueba == true ) {
+		} if( arr[2] > 0 || prueba ) {
 			colores[2] = Control.Color.ROJO; 
-		} if( arr[2] == 0 && prueba == false ) {
+		} if( arr[2] == 0 && !prueba ) {
 			colores[2] = Control.Color.VERDE; 
 		} 
 		colores[3] = Control.Color.VERDE; 
+
 	}
 } // end CLASS
