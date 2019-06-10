@@ -37,16 +37,6 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 	}
 
 	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
-	public static class PeticionAvisarPresencia {
-		protected One2OneChannel channel;
-		protected boolean value;
-
-		public PeticionAvisarPresencia (One2OneChannel channel, boolean value) {
-			this.channel = channel;
-			this.value = value;
-		}
-	}
-	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
 	public static class PeticionLeerCambioBarrera{
 		protected One2OneChannel channel;
 		protected boolean value;
@@ -80,22 +70,11 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			this.index = index;
 		}
 	}
-	// CLASE AUXILIAR PARA LAS PETICIONES QUE VAMOS RECIBIENDO
-	public static class PeticionAvisarPasoPorBaliza {
-		protected One2OneChannel channel;
-		protected int value;
-
-		public PeticionAvisarPasoPorBaliza (One2OneChannel channel, int value) {
-			this.channel = channel;
-			this.value = value;
-		}
-	}
 
 	// IMPLEMENTACION ENCLAVAMIENTO
 
 	public void avisarPresencia(boolean presencia) {
-		One2OneChannel ch = Channel.one2one();
-		chAvisarPresencia.out().write(new PeticionAvisarPresencia(ch,presencia));
+		chAvisarPresencia.out().write(presencia);
 	}
 
 
@@ -112,7 +91,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 	}
 
 	public Control.Color leerCambioSemaforo(int i, Control.Color color) {
-		if (i == 0 ) 
+		if (i == 0) 
 			throw new PreconditionFailedException("Semaforo 0 no existe");
 
 		One2OneChannel ch = Channel.one2one();
@@ -124,8 +103,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		if (i == 0)
 			throw new PreconditionFailedException("Baliza 0 no existe");
 
-		One2OneChannel ch = Channel.one2one();
-		chAvisarPasoPorBaliza.out().write(new PeticionAvisarPasoPorBaliza(ch,i));
+		chAvisarPasoPorBaliza.out().write(i);
 	}
 
 	// NOMBRES PARA LOS INDICES DE SERVICIOS
@@ -169,63 +147,43 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		};
 
 		Alternative services = new Alternative(inputs);
-
+		int chosenService = 0;
 		// BUCLE DE SERVICIO
 		while (true) {
-
-			switch (services.fairSelect()) {
+			chosenService = services.fairSelect();
+			
+			switch (chosenService) {
 
 			case AVISAR_PRESENCIA: {
 				// LEEMOS PETICION DEL CANAL
-				PeticionAvisarPresencia petPresencia = (PeticionAvisarPresencia) chAvisarPresencia.in().read();
 				// ACTUALIZAMOS ESTADO DEL RECURSO
-				presencia = petPresencia.value;
+				boolean quePresencia = (Boolean) chAvisarPresencia.in().read();
+				presencia = quePresencia;
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
 				break;
 			}
 			case LEER_CAMBIO_BARRERA: {
-				// LEEMOS PETICION
-				PeticionLeerCambioBarrera petBar = (PeticionLeerCambioBarrera) chLeerCambioBarrera.in().read();
-				// SI NO SE CUMPLE LA CPRE--> ENCOLAMOS
-				if(petBar.value == (trenes[1] + trenes[2] == 0)) {
-					listaBarrera.add(petBar);
-					// SI SE CUMPLE, GUARDAMOS VALOR EN DICHO CANAL
-				} else {
-					petBar.channel.out().write((trenes[1] + trenes[2] == 0));
-				}
+				// LEEMOS PETICION Y GUARDAMOS PETICION TAL CUAL
+				listaBarrera.add((PeticionLeerCambioBarrera) chLeerCambioBarrera.in().read());
 				break;
 			}
 			case LEER_CAMBIO_FRENO: {
-				// LEEMOS PETICION
-				PeticionLeerCambioFreno petFren = (PeticionLeerCambioFreno) chLeerCambioFreno.in().read();
-				// SI NO SE CUMPLE LA CPRE--> ENCOLAMOS
-				if(petFren.value == (trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true)) {
-					listaFreno.add(petFren);
-					// SI SE CUMPLE, GUARDAMOS VALOR EN DICHO CANAL
-				} else {
-					petFren.channel.out().write((trenes[1] > 1 || trenes[2] > 1 || trenes[2] == 1 && presencia == true));
-				}
+				// LEEMOS PETICION Y GUARDAMOS TAL CUAL
+				listaFreno.add((PeticionLeerCambioFreno) chLeerCambioFreno.in().read());
 				break;
 			}
 			case LEER_CAMBIO_SEMAFORO: {
-				// LEEMOS PETICION
-				PeticionLeerCambioSemaforo petSem = (PeticionLeerCambioSemaforo) chLeerCambioSemaforo.in().read();
-				// SI NO SE CUMPLE LA CPRE--> ENCOLAMOS
-				if (petSem.color == coloresBaliza[petSem.index]) {
-					listaSemaforo.add(petSem);
-					// SI SE CUMPLE, GUARDAMOS VALOR EN DICHO CANAL
-				} else {
-					petSem.channel.out().write(coloresBaliza[petSem.index]);
-				}
+				// LEEMOS Y GUARDAMOS PETICION TAL CUAL
+				listaSemaforo.add((PeticionLeerCambioSemaforo) chLeerCambioSemaforo.in().read());
 				break;
 			}
 			case AVISAR_PASO_POR_BALIZA: {
 				// LEEMOS PETICION DEL CANAL
-				PeticionAvisarPasoPorBaliza petBaliza =  (PeticionAvisarPasoPorBaliza) chAvisarPasoPorBaliza.in().read();
 				// ACTUALIZO EL ESTADO DEL RECURSO
-				trenes[petBaliza.value-1] = trenes[petBaliza.value-1] - 1;
-				trenes[petBaliza.value] = trenes[petBaliza.value] + 1;
+				int i = (Integer) chAvisarPasoPorBaliza.in().read();
+				trenes[i-1] = trenes[i-1] - 1;
+				trenes[i] = trenes[i] + 1;
 
 				// INVOCA COLORES CORRECTOS
 				coloresCorrectos(trenes,coloresBaliza,presencia);
@@ -236,11 +194,12 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			//BLOQUEO Y DESBLOQUEO DE LAS PETICIONES
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE BARRERA
 			for( int i = 0 ; i < listaBarrera.size() ; i++) {
-				PeticionLeerCambioBarrera petBar = listaBarrera.poll();				
+				PeticionLeerCambioBarrera petBar = listaBarrera.poll();
+				boolean esperado = trenes[1] + trenes[2] == 0;
 				// SI SE CUMPLE LA CPRE DE BARRERA
-				if( petBar.value != (trenes[1] + trenes[2] == 0)) {
+				if( petBar.value != esperado) {
 					// POST
-					petBar.channel.out().write((Boolean)(trenes[1] + trenes[2] == 0));
+					petBar.channel.out().write(esperado);
 
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else {
@@ -252,11 +211,11 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE FRENO
 			for ( int j = 0 ; j < listaFreno.size() ; j++ ) { 
 				PeticionLeerCambioFreno petFren = listaFreno.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-
+				boolean esperado = (trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true);
 				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
-				if ( petFren.value != ((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true))) {
+				if ( petFren.value != esperado) {
 					// POST
-					petFren.channel.out().write((Boolean)((trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && presencia == true));
+					petFren.channel.out().write(esperado);
 
 					// SI NO SE CUMPLE LA CPRE DE FRENO--> VUELVE A ENCOLAR EL ELEMENTO
 				} else { 
@@ -268,11 +227,10 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE SEMAFORO
 			for ( int z = 0 ; z < listaSemaforo.size() ; z++ ) {
 				PeticionLeerCambioSemaforo petSem = listaSemaforo.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
-
+				Control.Color esperado = coloresBaliza[petSem.index];
 				// SI SE CUMPLE LA CPRE PARA SEMAFORO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
-				if(petSem.index == 1 && petSem.color != coloresBaliza[petSem.index] || petSem.index == 2 && petSem.color != coloresBaliza[petSem.index]
-						|| petSem.index == 3 && petSem.color != coloresBaliza[petSem.index]) {
-					petSem.channel.out().write((Control.Color) coloresBaliza[petSem.index]);
+				if(petSem.color != esperado) {
+					petSem.channel.out().write(esperado);
 				}
 				else { 
 
@@ -287,16 +245,16 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 		// IMPLEMENTACION COLORES CORRECTOS
 		if( arr[1] > 0 ) {
 			colores[1] = Control.Color.ROJO; 
-		} if( arr[1] == 0 && ( arr[2] > 0 || prueba )) {
+		} if( arr[1] == 0 && (arr[2] > 0 || prueba)) {
 			colores[1] = Control.Color.AMARILLO; 	   
 		} if( arr[1] == 0 && arr[2] == 0 && !prueba ) {
 			colores[1] = Control.Color.VERDE; 
-		} if( arr[2] > 0 || prueba ) {
+		}
+		if( arr[2] > 0 || prueba ) {
 			colores[2] = Control.Color.ROJO; 
-		} if( arr[2] == 0 && !prueba ) {
+		} if( arr[2] == 0 && !prueba) {
 			colores[2] = Control.Color.VERDE; 
 		} 
 		colores[3] = Control.Color.VERDE; 
-
 	}
 } // end CLASS
