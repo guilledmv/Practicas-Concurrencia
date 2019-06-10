@@ -192,8 +192,12 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 			} // CIERRE swith
 
 			//BLOQUEO Y DESBLOQUEO DE LAS PETICIONES
+			// DECLARO LONGITUDES DE LAS COLAS
+			int sizeBarrera = listaBarrera.size();
+			int sizeFreno = listaFreno.size();
+			int sizeSemaforo = listaSemaforo.size();
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE BARRERA
-			for( int i = 0 ; i < listaBarrera.size() ; i++) {
+			for( int i = 0 ; i < sizeBarrera ; i++) {
 				PeticionLeerCambioBarrera petBar = listaBarrera.poll();
 				boolean esperado = trenes[1] + trenes[2] == 0;
 				// SI SE CUMPLE LA CPRE DE BARRERA
@@ -209,7 +213,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				}
 			} // CIERRE BUCLE COLA BARRERA
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE FRENO
-			for ( int j = 0 ; j < listaFreno.size() ; j++ ) { 
+			for ( int j = 0 ; j < sizeFreno ; j++ ) { 
 				PeticionLeerCambioFreno petFren = listaFreno.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
 				boolean esperado = (trenes[1] > 1) || (trenes[2] > 1) || (trenes[2] == 1) && (presencia == true);
 				// SI SE CUMPLE LA CPRE DE FRENO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
@@ -225,7 +229,7 @@ public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 				}
 			} // CIERRE BUCLE COLA DE FRENO
 			// RECORRIDO DE LA COLA DE LAS PETICIONES DE SEMAFORO
-			for ( int z = 0 ; z < listaSemaforo.size() ; z++ ) {
+			for ( int z = 0 ; z < sizeSemaforo ; z++ ) {
 				PeticionLeerCambioSemaforo petSem = listaSemaforo.poll(); // OBTENEMOS PRIMER ELEMENTO DE LA COLA
 				Control.Color esperado = coloresBaliza[petSem.index];
 				// SI SE CUMPLE LA CPRE PARA SEMAFORO Y EXISTEN PETICIONES EN COLA --> ESCRIBE EN CANAL
