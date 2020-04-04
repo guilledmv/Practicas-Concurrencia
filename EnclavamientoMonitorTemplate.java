@@ -4,8 +4,6 @@ import es.upm.babel.cclib.Monitor.Cond;
 import es.upm.aedlib.fifo.FIFO;
 import es.upm.aedlib.fifo.FIFOList;
 
-
-// Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
 // Algoritmo usado para la resolucion de metodos en los que la CPRE depende de parametros de entrada --> Indexacion por Cliente
 
 public class EnclavamientoMonitor implements Enclavamiento {
