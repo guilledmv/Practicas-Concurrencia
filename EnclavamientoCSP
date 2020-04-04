@@ -16,8 +16,6 @@ import org.jcsp.lang.One2OneChannel;
  * Implementacion usando jcsp mediante peticiones aplazadas
  */
 
-//Grupo: Guillermo De Miguel Villanueva (160262) , Marcos Arevalo Salas (160266)
-
 public class EnclavamientoCSP implements CSProcess, Enclavamiento {
 
 	// CANALES PARA RECIBIR EL ESTADO DEL RECURSO--> 1 CANAL POR METODO
